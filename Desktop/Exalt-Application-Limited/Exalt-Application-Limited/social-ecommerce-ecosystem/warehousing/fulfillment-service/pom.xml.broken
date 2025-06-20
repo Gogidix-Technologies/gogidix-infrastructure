@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    
+    <parent>
+        <groupId>com.exalt.warehousing</groupId>
+        <artifactId>fulfillment</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    
+    <artifactId>fulfillment</artifactId>
+    <name>Fulfillment Service</name>
+    <description>Service for managing order fulfillment operations</description>
+    
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Warehousing Shared Library -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <!-- Spring Boot Starters -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+        </dependency>
+        
+        <!-- Spring Cloud -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+        </dependency>
+        
+        <!-- Kafka -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+        </dependency>
+        
+        <!-- OpenAPI Documentation -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+        </dependency>
+        
+        <!-- Lombok -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        
+        <!-- MapStruct -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+            <version>1.5.5.Final</version>
+        </dependency>
+        
+        <!-- Database -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        
+        <!-- Test Dependencies -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>fulfillment</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>fulfillment</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

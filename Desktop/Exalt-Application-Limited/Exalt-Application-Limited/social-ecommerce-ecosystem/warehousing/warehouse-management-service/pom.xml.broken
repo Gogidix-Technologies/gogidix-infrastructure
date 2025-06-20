@@ -1,0 +1,217 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.exalt.warehousing</groupId>
+        <artifactId>warehouse-management</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <groupId>com.exalt.warehousing</groupId>
+    <artifactId>warehouse-management</artifactId>
+    <version>1.0.0</version>
+    <packaging>jar</packaging>
+    <name>Warehouse Management Service</name>
+    <description>Warehouse operations and management service</description>
+
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring-cloud.version>2022.0.4</spring-cloud.version>
+        <testcontainers.version>1.19.1</testcontainers.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+            <dependency>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>warehouse-management</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Warehousing Shared Library -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <!-- Spring Boot Starters -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+        
+        <!-- Resilience4j Circuit Breaker -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+        
+        <!-- Spring Cloud Circuit Breaker -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+        <!-- OpenAPI/Swagger -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+
+        <!-- Caffeine for caching -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+        <!-- Spring Cloud -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+        <!-- Kafka -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+        <!-- Database -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+        <!-- Redis -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- QR Code Generation -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+            <version>3.5.2</version>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+            <version>3.5.2</version>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-management</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>warehouse-management</artifactId>
+                <version>${spring-boot.version}</version>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>com.exalt.warehousing</groupId>
+                            <artifactId>warehouse-management</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

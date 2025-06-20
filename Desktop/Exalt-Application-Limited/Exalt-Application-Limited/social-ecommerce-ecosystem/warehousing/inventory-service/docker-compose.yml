@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  inventory-service:
+    build: .
+    container_name: warehousing-inventory-service
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+      - EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE=http://eureka:8761/eureka/
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=inventory_service
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    depends_on:
+      - postgres
+      - redis
+      - eureka
+    networks:
+      - warehousing-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: inventory-service-postgres
+    environment:
+      POSTGRES_DB: inventory_service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - warehousing-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: inventory-service-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - warehousing-network
+
+  eureka:
+    image: springcloud/eureka:latest
+    container_name: inventory-service-eureka
+    ports:
+      - "8761:8761"
+    networks:
+      - warehousing-network
+
+volumes:
+  postgres_data:
+
+networks:
+  warehousing-network:
+    driver: bridge

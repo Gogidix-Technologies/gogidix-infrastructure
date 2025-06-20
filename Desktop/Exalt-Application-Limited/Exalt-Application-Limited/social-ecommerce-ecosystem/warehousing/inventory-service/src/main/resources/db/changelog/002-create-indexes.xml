@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.15.xsd">
+
+    <changeSet id="002-create-performance-indexes" author="inventory-service">
+        <!-- Core Business Indexes -->
+        <createIndex indexName="idx_inventory_sku" tableName="inventory_items" unique="true">
+            <column name="sku"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_product_id" tableName="inventory_items">
+            <column name="product_id"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_vendor_id" tableName="inventory_items">
+            <column name="vendor_id"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_warehouse_id" tableName="inventory_items">
+            <column name="warehouse_id"/>
+        </createIndex>
+        
+        <!-- Status and Operation Indexes -->
+        <createIndex indexName="idx_inventory_status" tableName="inventory_items">
+            <column name="status"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_location" tableName="inventory_items">
+            <column name="location"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_zone" tableName="inventory_items">
+            <column name="zone"/>
+        </createIndex>
+        
+        <!-- Stock Management Indexes -->
+        <createIndex indexName="idx_inventory_reorder_point" tableName="inventory_items">
+            <column name="reorder_point"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_available_quantity" tableName="inventory_items">
+            <column name="available_quantity"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_reserved_quantity" tableName="inventory_items">
+            <column name="reserved_quantity"/>
+        </createIndex>
+        
+        <!-- Date-based Indexes -->
+        <createIndex indexName="idx_inventory_last_updated" tableName="inventory_items">
+            <column name="last_stock_update"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_expiry" tableName="inventory_items">
+            <column name="expiry_date"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_received_date" tableName="inventory_items">
+            <column name="received_date"/>
+        </createIndex>
+        
+        <!-- Business Logic Indexes -->
+        <createIndex indexName="idx_inventory_category" tableName="inventory_items">
+            <column name="category"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_supplier" tableName="inventory_items">
+            <column name="supplier_id"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_batch" tableName="inventory_items">
+            <column name="batch_number"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_priority" tableName="inventory_items">
+            <column name="priority_level"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_compliance" tableName="inventory_items">
+            <column name="compliance_status"/>
+        </createIndex>
+        
+        <!-- Vendor Self-Storage Indexes -->
+        <createIndex indexName="idx_inventory_vendor_managed" tableName="inventory_items">
+            <column name="is_vendor_managed"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_auto_reorder" tableName="inventory_items">
+            <column name="auto_reorder_enabled"/>
+        </createIndex>
+        
+        <!-- Composite Indexes for Complex Queries -->
+        <createIndex indexName="idx_inventory_vendor_status" tableName="inventory_items">
+            <column name="vendor_id"/>
+            <column name="status"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_warehouse_zone_status" tableName="inventory_items">
+            <column name="warehouse_id"/>
+            <column name="zone"/>
+            <column name="status"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_vendor_managed_available" tableName="inventory_items">
+            <column name="is_vendor_managed"/>
+            <column name="vendor_id"/>
+            <column name="status"/>
+            <column name="available_quantity"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_category_status" tableName="inventory_items">
+            <column name="category"/>
+            <column name="status"/>
+        </createIndex>
+        
+        <createIndex indexName="idx_inventory_priority_status" tableName="inventory_items">
+            <column name="priority_level"/>
+            <column name="status"/>
+            <column name="last_stock_update"/>
+        </createIndex>
+    </changeSet>
+
+</databaseChangeLog>

@@ -1,0 +1,796 @@
+package com.ecosystem.warehousing.fulfillment.service.impl;
+
+import com.ecosystem.warehousing.fulfillment.client.InventoryClient;
+import com.ecosystem.warehousing.fulfillment.dto.inventory.InventoryAllocationRequest;
+import com.ecosystem.warehousing.fulfillment.dto.inventory.InventoryAllocationResponse;
+import com.ecosystem.warehousing.fulfillment.dto.inventory.InventoryCheckRequest;
+import com.ecosystem.warehousing.fulfillment.dto.inventory.InventoryCheckResponse;
+import com.ecosystem.warehousing.fulfillment.dto.inventory.InventoryReleaseRequest;
+import com.ecosystem.warehousing.fulfillment.dto.inventory.InventoryReservationRequest;
+import com.ecosystem.warehousing.fulfillment.dto.inventory.InventoryReservationResponse;
+import com.ecosystem.warehousing.fulfillment.exception.FulfillmentException;
+import com.ecosystem.warehousing.fulfillment.exception.ResourceNotFoundException;
+// Import model classes for service interface compatibility
+import com.ecosystem.warehousing.fulfillment.model.FulfillmentOrder;
+import com.ecosystem.warehousing.fulfillment.model.FulfillmentOrderItem;
+import com.ecosystem.warehousing.fulfillment.model.FulfillmentStatus;
+import com.ecosystem.warehousing.fulfillment.model.ItemFulfillmentStatus;
+import com.ecosystem.warehousing.fulfillment.model.InventoryStatus;
+// Import entity classes for repository interactions
+// Import entity classes for repository interactions - using fully qualified name in methods
+import com.ecosystem.warehousing.fulfillment.entity.FulfillmentOrder;
+// Import our new mapper
+import com.ecosystem.warehousing.fulfillment.mapper.EntityModelMapper;
+import com.ecosystem.warehousing.fulfillment.repository.FulfillmentOrderRepository;
+import com.ecosystem.warehousing.fulfillment.service.FulfillmentOrderService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
+/**
+ * Implementation of the FulfillmentOrderService
+ * 
+ * Uses EntityModelMapper to convert between entity and model classes for repository operations.
+ */
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class FulfillmentOrderServiceImpl implements FulfillmentOrderService {
+
+    private final FulfillmentOrderRepository fulfillmentOrderRepository;
+    private final InventoryClient inventoryClient;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
+    private final EntityModelMapper entityModelMapper;
+
+    @Override
+    @Transactional
+    public FulfillmentOrder createFulfillmentOrder(FulfillmentOrder fulfillmentOrder) {
+        log.info("Creating new fulfillment order for order ID: {}", fulfillmentOrder.getOrderId());
+        
+        // Set initial status
+        if (fulfillmentOrder.getStatus() == null) {
+            fulfillmentOrder.setStatus(FulfillmentStatus.RECEIVED);
+        }
+        
+        // Initialize items status if not set
+        fulfillmentOrder.getItems().forEach(item -> {
+            if (item.getStatus() == null) {
+                item.setStatus(ItemFulfillmentStatus.PENDING);
+            }
+            
+            if (item.getQuantityFulfilled() == null) {
+                item.setQuantityFulfilled(0);
+            }
+            
+            if (item.getQuantityPicked() == null) {
+                item.setQuantityPicked(0);
+            }
+            
+            if (item.getQuantityPacked() == null) {
+                item.setQuantityPacked(0);
+            }
+        });
+        
+        // Convert model to entity for repository operations
+        com.ecosystem.warehousing.fulfillment.entity.FulfillmentOrder entityOrder = entityModelMapper.modelToEntity(fulfillmentOrder);
+        
+        // Save the fulfillment order entity
+        com.ecosystem.warehousing.fulfillment.entity.FulfillmentOrder savedEntityOrder = fulfillmentOrderRepository.save(entityOrder);
+        
+        // Convert saved entity back to model
+        com.ecosystem.warehousing.fulfillment.model.FulfillmentOrder savedOrder = entityModelMapper.entityToModel(savedEntityOrder);
+        
+        // Publish event for new fulfillment order
+        publishFulfillmentOrderEvent(savedOrder, "FULFILLMENT_ORDER_CREATED");
+        
+        return savedOrder;
+    }
+
+    @Override
+    public FulfillmentOrder getFulfillmentOrder(UUID fulfillmentOrderId) {
+        log.debug("Getting fulfillment order with ID: {}", fulfillmentOrderId);
+        // Convert UUID to Long for repository lookup
+        Long entityId = entityModelMapper.uuidToLong(fulfillmentOrderId);
+        
+        // Find the entity by ID
+        com.ecosystem.warehousing.fulfillment.entity.FulfillmentOrder entityOrder = fulfillmentOrderRepository.findById(entityId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fulfillment order not found with ID: " + fulfillmentOrderId));
+                
+        // Convert entity to model and return
+        return entityModelMapper.entityToModel(entityOrder);
+    }
+
+    @Override
+    public List<FulfillmentOrder> getFulfillmentOrdersByOrderId(UUID orderId) {
+        log.debug("Getting fulfillment orders for order ID: {}", orderId);
+        String orderIdString = orderId.toString();
+        
+        // Find entity orders by the external order ID (stored as String)
+        List<com.ecosystem.warehousing.fulfillment.entity.FulfillmentOrder> entityOrders = fulfillmentOrderRepository.findByExternalOrderId(orderIdString);
+        
+        // Convert the entities to models
+        return entityOrders.stream()
+                .map(entityModelMapper::entityToModel)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public FulfillmentOrder updateFulfillmentOrderStatus(UUID fulfillmentOrderId, FulfillmentStatus status) {
+        log.info("Updating fulfillment order {} status to: {}", fulfillmentOrderId, status);
+        
+        // Convert UUID to Long for repository lookup
+        Long entityId = entityModelMapper.uuidToLong(fulfillmentOrderId);
+        
+        com.ecosystem.warehousing.fulfillment.entity.FulfillmentOrder entityOrder = fulfillmentOrderRepository.findById(entityId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fulfillment order not found with ID: " + fulfillmentOrderId));
+        
+        // Convert entity to model for business logic processing
+        com.ecosystem.warehousing.fulfillment.model.FulfillmentOrder order = entityModelMapper.entityToModel(entityOrder);
+        
+        // Set appropriate timestamps based on status
+        LocalDateTime now = LocalDateTime.now();
+        
+        // Handle status-specific actions
+        switch (status) {
+            case PROCESSING:
+                order.setProcessingStartedAt(now);
+                break;
+            case PICKING:
+                order.setPickingStartedAt(now);
+                break;
+            case PICKING_COMPLETE:
+                order.setPickingCompletedAt(now);
+                break;
+            case PACKING:
+                order.setPackingStartedAt(now);
+                break;
+            case PACKING_COMPLETE:
+                order.setPackingCompletedAt(now);
+                break;
+            case SHIPPED:
+                order.setShippedAt(now);
+                break;
+            case DELIVERED:
+                order.setDeliveredAt(now);
+                break;
+            case CANCELLED:
+                order.setCancelledAt(now);
+                
+                // Release allocated inventory
+                releaseInventoryForOrder(order);
+                break;
+            default:
+                // No specific action for other statuses
+                break;
+        }
+        
+        // Update the status
+        order.setStatus(status);
+        
+        // Convert back to entity for repository operations
+        entityModelMapper.updateEntityFromModel(order, entityOrder);
+        
+        // Save the entity
+        com.ecosystem.warehousing.fulfillment.entity.FulfillmentOrder updatedEntityOrder = fulfillmentOrderRepository.save(entityOrder);
+        
+        // Convert updated entity back to model
+        com.ecosystem.warehousing.fulfillment.model.FulfillmentOrder updatedOrder = entityModelMapper.entityToModel(updatedEntityOrder);
+        
+        // Publish event
+        publishFulfillmentOrderEvent(updatedOrder, "FULFILLMENT_ORDER_STATUS_UPDATED");
+        
+        return updatedOrder;
+    }
+
+    @Override
+    @Transactional
+    public FulfillmentOrder updateItemStatus(UUID fulfillmentOrderId, UUID itemId, ItemFulfillmentStatus status) {
+        log.info("Updating item {} status to: {} in fulfillment order: {}", itemId, status, fulfillmentOrderId);
+        
+        FulfillmentOrder order = fulfillmentOrderRepository.findById(fulfillmentOrderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fulfillment order not found with ID: " + fulfillmentOrderId));
+        
+        // Find the item in the order
+        FulfillmentOrderItem item = order.getItems().stream()
+                .filter(i -> i.getId().equals(itemId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Item not found with ID: " + itemId));
+        
+        // Update the item status
+        item.setStatus(status);
+        
+        // Check if all items have the same status
+        boolean allItemsSameStatus = order.getItems().stream()
+                .allMatch(i -> i.getStatus() == status);
+        
+        // Update order status if all items have the same status
+        if (allItemsSameStatus) {
+            switch (status) {
+                case PICKED:
+                    updateFulfillmentOrderStatus(fulfillmentOrderId, FulfillmentStatus.PICKING_COMPLETE);
+                    break;
+                case PACKED:
+                    updateFulfillmentOrderStatus(fulfillmentOrderId, FulfillmentStatus.PACKING_COMPLETE);
+                    break;
+                case FULFILLED:
+                    updateFulfillmentOrderStatus(fulfillmentOrderId, FulfillmentStatus.COMPLETED);
+                    break;
+                default:
+                    // No specific order status update for other item statuses
+                    break;
+            }
+        }
+        
+        return fulfillmentOrderRepository.save(order);
+    }
+
+    @Override
+    @Transactional
+    public int processPendingOrders() {
+        log.info("Processing pending fulfillment orders");
+        
+        // Get all pending orders
+        List<FulfillmentOrder> pendingOrders = fulfillmentOrderRepository.findPendingOrders();
+        int processedCount = 0;
+        
+        for (FulfillmentOrder order : pendingOrders) {
+            try {
+                // Check inventory availability
+                if (checkInventoryAvailability(order)) {
+                    // Reserve inventory
+                    if (reserveInventory(order)) {
+                        // Move to PROCESSING status
+                        updateFulfillmentOrderStatus(order.getId(), FulfillmentStatus.PROCESSING);
+                        processedCount++;
+                    } else {
+                        // Update to pending inventory status if reservation fails
+                        updateFulfillmentOrderStatus(order.getId(), FulfillmentStatus.PENDING_INVENTORY);
+                    }
+                } else {
+                    // Update to pending inventory status
+                    updateFulfillmentOrderStatus(order.getId(), FulfillmentStatus.PENDING_INVENTORY);
+                }
+            } catch (Exception e) {
+                log.error("Error processing fulfillment order {}: {}", order.getId(), e.getMessage(), e);
+                // Continue with next order
+            }
+        }
+        
+        log.info("Processed {} out of {} pending fulfillment orders", processedCount, pendingOrders.size());
+        return processedCount;
+    }
+
+    @Override
+    @Transactional
+    public FulfillmentOrder cancelFulfillmentOrder(UUID fulfillmentOrderId, String reason) {
+        log.info("Cancelling fulfillment order: {} with reason: {}", fulfillmentOrderId, reason);
+        
+        FulfillmentOrder order = fulfillmentOrderRepository.findById(fulfillmentOrderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fulfillment order not found with ID: " + fulfillmentOrderId));
+        
+        order.setCancellationReason(reason);
+        order.setCancelledAt(LocalDateTime.now());
+        order.setStatus(FulfillmentStatus.CANCELLED);
+        
+        // Update all items to cancelled status
+        order.getItems().forEach(item -> item.setStatus(ItemFulfillmentStatus.CANCELLED));
+        
+        // Release any allocated inventory
+        releaseInventoryForOrder(order);
+        
+        // Save and publish event
+        FulfillmentOrder cancelledOrder = fulfillmentOrderRepository.save(order);
+        publishFulfillmentOrderEvent(cancelledOrder, "FULFILLMENT_ORDER_CANCELLED");
+        
+        return cancelledOrder;
+    }
+
+    @Override
+    public List<FulfillmentOrder> getFulfillmentOrdersByStatus(FulfillmentStatus status) {
+        log.debug("Getting fulfillment orders with status: {}", status);
+        return fulfillmentOrderRepository.findByStatus(status);
+    }
+
+    @Override
+    public List<FulfillmentOrder> getFulfillmentOrdersByWarehouse(UUID warehouseId) {
+        log.debug("Getting fulfillment orders for warehouse: {}", warehouseId);
+        return fulfillmentOrderRepository.findByWarehouseId(warehouseId);
+    }
+
+    @Override
+    public Map<String, Object> getFulfillmentStatistics(LocalDate startDate, LocalDate endDate) {
+        log.debug("Getting fulfillment statistics from {} to {}", startDate, endDate);
+        
+        LocalDateTime startDateTime = startDate.atStartOfDay();
+        LocalDateTime endDateTime = endDate.plusDays(1).atStartOfDay();
+        
+        // Get all orders in date range
+        List<FulfillmentOrder> orders = fulfillmentOrderRepository.findByCreatedAtBetween(startDateTime, endDateTime);
+        
+        // Calculate statistics
+        Map<String, Object> statistics = new HashMap<>();
+        
+        // Count orders by status
+        Map<FulfillmentStatus, Long> ordersByStatus = orders.stream()
+                .collect(Collectors.groupingBy(FulfillmentOrder::getStatus, Collectors.counting()));
+        statistics.put("ordersByStatus", ordersByStatus);
+        
+        // Total orders
+        statistics.put("totalOrders", orders.size());
+        
+        // Completed orders
+        long completedOrders = orders.stream()
+                .filter(o -> o.getStatus() == FulfillmentStatus.COMPLETED || o.getStatus() == FulfillmentStatus.DELIVERED)
+                .count();
+        statistics.put("completedOrders", completedOrders);
+        
+        // Cancelled orders
+        long cancelledOrders = orders.stream()
+                .filter(o -> o.getStatus() == FulfillmentStatus.CANCELLED)
+                .count();
+        statistics.put("cancelledOrders", cancelledOrders);
+        
+        // Average processing time (in hours)
+        double avgProcessingTime = orders.stream()
+                .filter(o -> o.getShippedAt() != null && o.getCreatedAt() != null)
+                .mapToLong(o -> java.time.Duration.between(o.getCreatedAt(), o.getShippedAt()).toHours())
+                .average()
+                .orElse(0.0);
+        statistics.put("averageProcessingTimeHours", avgProcessingTime);
+        
+        return statistics;
+    }
+
+    @Override
+    @Transactional
+    public List<FulfillmentOrder> splitFulfillmentOrder(UUID fulfillmentOrderId) {
+        log.info("Splitting fulfillment order: {}", fulfillmentOrderId);
+        
+        FulfillmentOrder originalOrder = fulfillmentOrderRepository.findById(fulfillmentOrderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fulfillment order not found with ID: " + fulfillmentOrderId));
+        
+        // Check if the order has already been processed
+        if (originalOrder.getStatus() != FulfillmentStatus.RECEIVED && 
+            originalOrder.getStatus() != FulfillmentStatus.PROCESSING) {
+            throw new FulfillmentException("Cannot split order that has already been processed beyond initial stages");
+        }
+        
+        // Group order items by warehouse for optimal fulfillment
+        Map<UUID, List<FulfillmentOrderItem>> itemsByWarehouse = determineOptimalWarehouseAllocation(originalOrder);
+        
+        // If only one warehouse is required, no need to split
+        if (itemsByWarehouse.size() <= 1) {
+            // Just assign to the one warehouse if available
+            if (itemsByWarehouse.size() == 1) {
+                UUID warehouseId = itemsByWarehouse.keySet().iterator().next();
+                originalOrder.setAssignedWarehouseId(warehouseId);
+                fulfillmentOrderRepository.save(originalOrder);
+            }
+            return List.of(originalOrder);
+        }
+        
+        // Create new fulfillment orders for each warehouse
+        List<FulfillmentOrder> newOrders = new ArrayList<>();
+        
+        for (Map.Entry<UUID, List<FulfillmentOrderItem>> entry : itemsByWarehouse.entrySet()) {
+            UUID warehouseId = entry.getKey();
+            List<FulfillmentOrderItem> items = entry.getValue();
+            
+            // Create new fulfillment order
+            FulfillmentOrder newOrder = createSplitFulfillmentOrder(originalOrder, warehouseId, items);
+            newOrders.add(newOrder);
+        }
+        
+        // Update original order status to show it's been split
+        originalOrder.setStatus(FulfillmentStatus.CANCELLED);
+        originalOrder.setCancellationReason("Order split into multiple warehouse fulfillments");
+        fulfillmentOrderRepository.save(originalOrder);
+        
+        return newOrders;
+    }
+
+    @Override
+    @Transactional
+    public FulfillmentOrder assignToWarehouse(UUID fulfillmentOrderId, UUID warehouseId) {
+        log.info("Assigning fulfillment order {} to warehouse: {}", fulfillmentOrderId, warehouseId);
+        
+        FulfillmentOrder order = fulfillmentOrderRepository.findById(fulfillmentOrderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Fulfillment order not found with ID: " + fulfillmentOrderId));
+        
+        // Check if inventory is available in the warehouse
+        InventoryCheckRequest request = createInventoryCheckRequest(order);
+        InventoryCheckResponse response = inventoryClient.checkWarehouseInventory(warehouseId, request);
+        
+        if (!response.isAllItemsAvailable()) {
+            throw new FulfillmentException("Not all items are available in the specified warehouse");
+        }
+        
+        // Assign to warehouse
+        order.setAssignedWarehouseId(warehouseId);
+        
+        // Update status to processing if still in received state
+        if (order.getStatus() == FulfillmentStatus.RECEIVED) {
+            order.setStatus(FulfillmentStatus.PROCESSING);
+            order.setProcessingStartedAt(LocalDateTime.now());
+        }
+        
+        // Save and publish event
+        FulfillmentOrder updatedOrder = fulfillmentOrderRepository.save(order);
+        publishFulfillmentOrderEvent(updatedOrder, "FULFILLMENT_ORDER_ASSIGNED");
+        
+        return updatedOrder;
+    }
+    
+    //-------------------------
+    // Helper methods
+    //-------------------------
+    
+    /**
+     * Check if inventory is available for all items in the order
+     */
+    private boolean checkInventoryAvailability(FulfillmentOrder order) {
+        InventoryCheckRequest request = createInventoryCheckRequest(order);
+        InventoryCheckResponse response = inventoryClient.checkInventoryAvailability(request);
+        
+        return response.isAllItemsAvailable();
+    }
+    
+    /**
+     * Create inventory check request from fulfillment order
+     */
+    private InventoryCheckRequest createInventoryCheckRequest(FulfillmentOrder order) {
+        InventoryCheckRequest request = new InventoryCheckRequest();
+        request.setOrderId(order.getOrderId());
+        
+        // Add shipping address information for warehouse selection
+        request.setDeliveryAddress(
+            InventoryCheckRequest.DeliveryAddressDTO.builder()
+                .addressLine1(order.getShippingAddressLine1())
+                .addressLine2(order.getShippingAddressLine2())
+                .city(order.getShippingCity())
+                .stateProvince(order.getShippingStateProvince())
+                .postalCode(order.getShippingPostalCode())
+                .country(order.getShippingCountry())
+                .build()
+        );
+        
+        // Add items
+        List<InventoryCheckRequest.InventoryItemDTO> items = order.getItems().stream()
+                .map(item -> new InventoryCheckRequest.InventoryItemDTO(
+                        item.getProductId(),
+                        item.getSku(),
+                        item.getQuantity()
+                ))
+                .collect(Collectors.toList());
+        
+        request.setItems(items);
+        return request;
+    }
+    
+    /**
+     * Reserve inventory for all items in the order
+     */
+    private boolean reserveInventory(FulfillmentOrder order) {
+        InventoryReservationRequest request = new InventoryReservationRequest();
+        request.setOrderId(order.getOrderId());
+        request.setFulfillmentOrderId(order.getId());
+        
+        List<InventoryReservationRequest.ReservationItemDTO> items = order.getItems().stream()
+                .map(item -> new InventoryReservationRequest.ReservationItemDTO(
+                        item.getProductId(),
+                        item.getSku(),
+                        item.getQuantity(),
+                        item.getId()
+                ))
+                .collect(Collectors.toList());
+        
+        request.setItems(items);
+        
+        try {
+            InventoryReservationResponse response = inventoryClient.reserveInventory(request);
+            return response.isSuccess();
+        } catch (Exception e) {
+            log.error("Error reserving inventory for order {}: {}", order.getId(), e.getMessage(), e);
+            return false;
+        }
+    }
+    
+    /**
+     * Release allocated inventory for an order
+     */
+    private void releaseInventoryForOrder(FulfillmentOrder order) {
+        InventoryReleaseRequest request = new InventoryReleaseRequest();
+        request.setOrderId(order.getOrderId());
+        request.setFulfillmentOrderId(order.getId());
+        
+        try {
+            inventoryClient.releaseInventory(request);
+        } catch (Exception e) {
+            log.error("Error releasing inventory for order {}: {}", order.getId(), e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Determine optimal warehouse allocation for order items
+     */
+    private Map<UUID, List<FulfillmentOrderItem>> determineOptimalWarehouseAllocation(FulfillmentOrder order) {
+        // Get recommended warehouse for entire order first
+        UUID recommendedWarehouse = null;
+        try {
+            recommendedWarehouse = inventoryClient.getRecommendedWarehouse(createInventoryCheckRequest(order));
+        } catch (Exception e) {
+            log.warn("Could not get recommended warehouse: {}", e.getMessage());
+        }
+        
+        // If we have a recommended warehouse, check if all items are available there
+        if (recommendedWarehouse != null) {
+            InventoryCheckResponse response = inventoryClient.checkWarehouseInventory(
+                    recommendedWarehouse, createInventoryCheckRequest(order));
+            
+            if (response.isAllItemsAvailable()) {
+                // All items available in single warehouse, no need to split
+                Map<UUID, List<FulfillmentOrderItem>> result = new HashMap<>();
+                result.put(recommendedWarehouse, new ArrayList<>(order.getItems()));
+                return result;
+            }
+        }
+        
+        // Need to find optimal warehouses for individual items
+        Map<UUID, List<FulfillmentOrderItem>> itemsByWarehouse = new HashMap<>();
+        
+        for (FulfillmentOrderItem item : order.getItems()) {
+            // Create a check request for individual item
+            InventoryCheckRequest itemRequest = new InventoryCheckRequest();
+            itemRequest.setOrderId(order.getOrderId());
+            
+            // Add shipping address information
+            itemRequest.setDeliveryAddress(
+                InventoryCheckRequest.DeliveryAddressDTO.builder()
+                    .addressLine1(order.getShippingAddressLine1())
+                    .addressLine2(order.getShippingAddressLine2())
+                    .city(order.getShippingCity())
+                    .stateProvince(order.getShippingStateProvince())
+                    .postalCode(order.getShippingPostalCode())
+                    .country(order.getShippingCountry())
+                    .build()
+            );
+            
+            // Add just this item
+            List<InventoryCheckRequest.InventoryItemDTO> items = List.of(
+                new InventoryCheckRequest.InventoryItemDTO(
+                    item.getProductId(),
+                    item.getSku(),
+                    item.getQuantity()
+                )
+            );
+            
+            itemRequest.setItems(items);
+            
+            // Get recommended warehouse for this item
+            try {
+                UUID warehouseId = inventoryClient.getRecommendedWarehouse(itemRequest);
+                
+                if (warehouseId != null) {
+                    itemsByWarehouse.computeIfAbsent(warehouseId, k -> new ArrayList<>()).add(item);
+                } else {
+                    // If no warehouse recommended, add to a "null" warehouse group
+                    // These items will need backorder handling
+                    itemsByWarehouse.computeIfAbsent(null, k -> new ArrayList<>()).add(item);
+                }
+            } catch (Exception e) {
+                log.warn("Could not determine warehouse for item {}: {}", item.getId(), e.getMessage());
+                // Add to null warehouse group
+                itemsByWarehouse.computeIfAbsent(null, k -> new ArrayList<>()).add(item);
+            }
+        }
+        
+        return itemsByWarehouse;
+    }
+    
+    /**
+     * Create a new fulfillment order based on an original order but with only some items
+     */
+    private FulfillmentOrder createSplitFulfillmentOrder(FulfillmentOrder originalOrder, UUID warehouseId, 
+                                                       List<FulfillmentOrderItem> items) {
+        // Create new fulfillment order with same details as original
+        FulfillmentOrder newOrder = new FulfillmentOrder();
+        newOrder.setOrderId(originalOrder.getOrderId());
+        newOrder.setOrderReference(originalOrder.getOrderReference() + "-SPLIT");
+        newOrder.setStatus(FulfillmentStatus.PROCESSING);
+        newOrder.setAssignedWarehouseId(warehouseId);
+        newOrder.setPriority(originalOrder.getPriority());
+        newOrder.setCustomerName(originalOrder.getCustomerName());
+        newOrder.setCustomerEmail(originalOrder.getCustomerEmail());
+        newOrder.setCustomerPhone(originalOrder.getCustomerPhone());
+        newOrder.setShippingAddressLine1(originalOrder.getShippingAddressLine1());
+        newOrder.setShippingAddressLine2(originalOrder.getShippingAddressLine2());
+        newOrder.setShippingCity(originalOrder.getShippingCity());
+        newOrder.setShippingStateProvince(originalOrder.getShippingStateProvince());
+        newOrder.setShippingPostalCode(originalOrder.getShippingPostalCode());
+        newOrder.setShippingCountry(originalOrder.getShippingCountry());
+        newOrder.setShippingInstructions(originalOrder.getShippingInstructions());
+        newOrder.setShippingMethod(originalOrder.getShippingMethod());
+        newOrder.setProcessingStartedAt(LocalDateTime.now());
+        
+        // Save the new order
+        FulfillmentOrder savedOrder = fulfillmentOrderRepository.save(newOrder);
+        
+        // Create new items (copies of original items)
+        for (FulfillmentOrderItem originalItem : items) {
+            FulfillmentOrderItem newItem = new FulfillmentOrderItem();
+            newItem.setFulfillmentOrder(savedOrder);
+            newItem.setOrderItemId(originalItem.getOrderItemId());
+            newItem.setProductId(originalItem.getProductId());
+            newItem.setSku(originalItem.getSku());
+            newItem.setProductName(originalItem.getProductName());
+            newItem.setProductImageUrl(originalItem.getProductImageUrl());
+            newItem.setQuantity(originalItem.getQuantity());
+            newItem.setQuantityFulfilled(0);
+            newItem.setQuantityPacked(0);
+            newItem.setQuantityPicked(0);
+            newItem.setStatus(ItemFulfillmentStatus.PENDING);
+            newItem.setSpecialInstructions(originalItem.getSpecialInstructions());
+            
+            // Add the item to the order
+            savedOrder.addItem(newItem);
+        }
+        
+        // Save again with items
+        return fulfillmentOrderRepository.save(savedOrder);
+    }
+    
+    /**
+     * Publish a fulfillment order event to Kafka
+     */
+    private void publishFulfillmentOrderEvent(FulfillmentOrder order, String eventType) {
+        Map<String, Object> event = new HashMap<>();
+        event.put("eventType", eventType);
+        event.put("fulfillmentOrderId", order.getId());
+        event.put("orderId", order.getOrderId());
+        event.put("status", order.getStatus());
+        event.put("warehouseId", order.getAssignedWarehouseId());
+        event.put("timestamp", LocalDateTime.now());
+        
+        kafkaTemplate.send("fulfillment-events", order.getId().toString(), event);
+        log.debug("Published {} event for order {}", eventType, order.getId());
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void proceedToNextFulfillmentStage(FulfillmentOrder fulfillmentOrder) {
+        log.info("Proceeding to next fulfillment stage for order: {}", fulfillmentOrder.getId());
+        
+        // Only proceed if inventory is allocated
+        if (fulfillmentOrder.getInventoryStatus() != InventoryStatus.ALLOCATED) {
+            log.warn("Cannot proceed to next stage - inventory not allocated: {}", fulfillmentOrder.getId());
+            return;
+        }
+        
+        // If status is NEW or PENDING, move to PROCESSING
+        if (fulfillmentOrder.getStatus() == FulfillmentStatus.NEW || 
+            fulfillmentOrder.getStatus() == FulfillmentStatus.PENDING) {
+            
+            // Update order status
+            fulfillmentOrder.setStatus(FulfillmentStatus.PROCESSING);
+            fulfillmentOrder.addNote("Started processing after inventory allocation");
+            fulfillmentOrderRepository.save(fulfillmentOrder);
+            
+            // Notify order service that fulfillment is in progress
+            try {
+                // Send event or API call to order service
+                log.info("Notifying order service that fulfillment is in progress for order: {}", 
+                        fulfillmentOrder.getOrderId());
+                
+                // Code to notify order service - using Kafka event
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("orderId", fulfillmentOrder.getOrderId());
+                payload.put("status", "FULFILLMENT_PROCESSING");
+                payload.put("timestamp", LocalDateTime.now());
+                
+                kafkaTemplate.send("order-status-updates", fulfillmentOrder.getOrderId().toString(), payload);
+            } catch (Exception e) {
+                log.error("Failed to notify order service", e);
+                // Continue with processing despite notification failure
+            }
+        }
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void handleInventoryCancellation(FulfillmentOrder fulfillmentOrder, String reason) {
+        log.info("Handling inventory cancellation for order: {}", fulfillmentOrder.getId());
+        
+        // Update inventory status
+        fulfillmentOrder.setInventoryStatus(InventoryStatus.CANCELLED);
+        
+        // If the fulfillment is still pending or new, cancel it
+        if (fulfillmentOrder.getStatus() == FulfillmentStatus.NEW || 
+            fulfillmentOrder.getStatus() == FulfillmentStatus.PENDING) {
+            
+            fulfillmentOrder.setStatus(FulfillmentStatus.CANCELLED);
+            fulfillmentOrder.setCancellationReason("Inventory reservation cancelled: " + reason);
+            fulfillmentOrder.addNote("Fulfillment cancelled due to inventory cancellation: " + reason);
+            
+            // Notify order service about cancellation
+            try {
+                log.info("Notifying order service about cancellation due to inventory unavailability: {}", 
+                        fulfillmentOrder.getOrderId());
+                
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("orderId", fulfillmentOrder.getOrderId());
+                payload.put("status", "INVENTORY_UNAVAILABLE");
+                payload.put("reason", reason);
+                payload.put("timestamp", LocalDateTime.now());
+                
+                kafkaTemplate.send("order-status-updates", fulfillmentOrder.getOrderId().toString(), payload);
+            } catch (Exception e) {
+                log.error("Failed to notify order service about cancellation", e);
+            }
+        } else {
+            // Just add a note about the reservation cancellation
+            fulfillmentOrder.addNote("Inventory reservation cancelled but fulfillment already in progress: " + reason);
+        }
+        
+        fulfillmentOrderRepository.save(fulfillmentOrder);
+    }
+    
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    @Transactional
+    public void handleInventoryExpiration(FulfillmentOrder fulfillmentOrder) {
+        log.info("Handling inventory expiration for order: {}", fulfillmentOrder.getId());
+        
+        // Update inventory status
+        fulfillmentOrder.setInventoryStatus(InventoryStatus.EXPIRED);
+        
+        // If the fulfillment is still pending or new, cancel it
+        if (fulfillmentOrder.getStatus() == FulfillmentStatus.NEW || 
+            fulfillmentOrder.getStatus() == FulfillmentStatus.PENDING) {
+            
+            fulfillmentOrder.setStatus(FulfillmentStatus.CANCELLED);
+            fulfillmentOrder.setCancellationReason("Inventory reservation expired");
+            fulfillmentOrder.addNote("Fulfillment cancelled due to inventory reservation expiration");
+            
+            // Attempt to re-reserve inventory
+            try {
+                log.info("Notifying order service about inventory expiration for order: {}", 
+                        fulfillmentOrder.getOrderId());
+                
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("orderId", fulfillmentOrder.getOrderId());
+                payload.put("status", "INVENTORY_RESERVATION_EXPIRED");
+                payload.put("action", "RETRY_NEEDED");
+                payload.put("timestamp", LocalDateTime.now());
+                
+                kafkaTemplate.send("order-status-updates", fulfillmentOrder.getOrderId().toString(), payload);
+            } catch (Exception e) {
+                log.error("Failed to notify order service about expiration", e);
+            }
+        } else {
+            // Just add a note about the reservation expiration
+            fulfillmentOrder.addNote("Inventory reservation expired but fulfillment already in progress");
+        }
+        
+        fulfillmentOrderRepository.save(fulfillmentOrder);
+    }
+}

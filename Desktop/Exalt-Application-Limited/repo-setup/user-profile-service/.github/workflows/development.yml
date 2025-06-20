@@ -1,0 +1,13 @@
+﻿name: Development CI/CD
+on:
+  push:
+    branches: [ development ]
+  pull_request:
+    branches: [ development ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build and deploy
+        run: echo "Development deployment"

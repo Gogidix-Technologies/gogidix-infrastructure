@@ -1,0 +1,235 @@
+version: '3.8'
+
+services:
+  # Infrastructure Services
+  postgres:
+    image: postgres:15-alpine
+    container_name: haulage-postgres
+    environment:
+      POSTGRES_DB: haulage_logistics
+      POSTGRES_USER: haulage_user
+      POSTGRES_PASSWORD: haulage_pass_dev_only
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - haulage-network
+
+  mongodb:
+    image: mongo:7-jammy
+    container_name: haulage-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: haulage_admin
+      MONGO_INITDB_ROOT_PASSWORD: haulage_mongo_dev_only
+      MONGO_INITDB_DATABASE: haulage_logs
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - haulage-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: haulage-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - haulage-network
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    container_name: haulage-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    ports:
+      - "9093:9093"
+    networks:
+      - haulage-network
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: haulage-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2182:2181"
+    networks:
+      - haulage-network
+
+  # Core Logistics Services
+  haulage-core-service:
+    build:
+      context: ./java-services/haulage-core-service
+      dockerfile: Dockerfile
+    container_name: haulage-core
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/haulage_logistics
+      SPRING_DATASOURCE_USERNAME: haulage_user
+      SPRING_DATASOURCE_PASSWORD: haulage_pass_dev_only
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SPRING_DATA_REDIS_HOST: redis
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka:8761/eureka
+    ports:
+      - "8081:8080"
+    depends_on:
+      - postgres
+      - kafka
+      - redis
+    networks:
+      - haulage-network
+    profiles:
+      - services
+
+  freight-management-service:
+    build:
+      context: ./java-services/freight-management-service
+      dockerfile: Dockerfile
+    container_name: freight-management
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/haulage_logistics
+      SPRING_DATASOURCE_USERNAME: haulage_user
+      SPRING_DATASOURCE_PASSWORD: haulage_pass_dev_only
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka:8761/eureka
+    ports:
+      - "8082:8080"
+    depends_on:
+      - postgres
+      - kafka
+      - haulage-core-service
+    networks:
+      - haulage-network
+    profiles:
+      - services
+
+  route-optimization-service:
+    build:
+      context: ./java-services/route-optimization-service
+      dockerfile: Dockerfile
+    container_name: route-optimization
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/haulage_logistics
+      SPRING_DATASOURCE_USERNAME: haulage_user
+      SPRING_DATASOURCE_PASSWORD: haulage_pass_dev_only
+      GOOGLE_MAPS_API_KEY: ${GOOGLE_MAPS_API_KEY:-demo_key}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka:8761/eureka
+    ports:
+      - "8083:8080"
+    depends_on:
+      - postgres
+      - haulage-core-service
+    networks:
+      - haulage-network
+    profiles:
+      - services
+
+  # Fleet Management Services
+  fleet-management-service:
+    build:
+      context: ./java-services/fleet-management-service
+      dockerfile: Dockerfile
+    container_name: fleet-management
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/haulage_logistics
+      SPRING_DATASOURCE_USERNAME: haulage_user
+      SPRING_DATASOURCE_PASSWORD: haulage_pass_dev_only
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka:8761/eureka
+    ports:
+      - "8084:8080"
+    depends_on:
+      - postgres
+      - haulage-core-service
+    networks:
+      - haulage-network
+    profiles:
+      - services
+
+  # Customer Portal (Node.js)
+  customer-portal-service:
+    build:
+      context: ./node-services/customer-portal-service
+      dockerfile: Dockerfile
+    container_name: haulage-customer-portal
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DATABASE_URL: mongodb://haulage_admin:haulage_mongo_dev_only@mongodb:27017/haulage_logs
+      REDIS_URL: redis://redis:6379
+      API_BASE_URL: http://haulage-core-service:8080
+    ports:
+      - "3001:3000"
+    depends_on:
+      - mongodb
+      - redis
+      - haulage-core-service
+    networks:
+      - haulage-network
+    profiles:
+      - frontend
+
+  # Monitoring & Observability
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: haulage-prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./infrastructure/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - haulage-network
+    profiles:
+      - monitoring
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: haulage-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: admin_dev_only
+    ports:
+      - "3001:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./infrastructure/monitoring/dashboards:/etc/grafana/provisioning/dashboards
+    networks:
+      - haulage-network
+    profiles:
+      - monitoring
+
+  # Service Discovery (External)
+  eureka:
+    image: steeltoeoss/eureka-server:latest
+    container_name: haulage-eureka
+    ports:
+      - "8762:8761"
+    networks:
+      - haulage-network
+    profiles:
+      - infrastructure
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  grafana_data:
+
+networks:
+  haulage-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

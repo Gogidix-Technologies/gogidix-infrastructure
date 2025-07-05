@@ -1,0 +1,300 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haulage-logistics-deployment
+  namespace: exalt-production
+  labels:
+    app: haulage-logistics
+    component: backend
+    domain: haulage-logistics
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: haulage-logistics
+  template:
+    metadata:
+      labels:
+        app: haulage-logistics
+        component: backend
+        domain: haulage-logistics
+    spec:
+      serviceAccountName: haulage-logistics-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: haulage-api
+        image: exalt/haulage-logistics:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: management
+          containerPort: 8081
+          protocol: TCP
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production"
+        - name: JAVA_OPTS
+          value: "-Xmx1g -Xms512m -XX:+UseG1GC -XX:+UseContainerSupport"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: haulage-logistics-secrets
+              key: database-url
+        - name: DATABASE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: haulage-logistics-secrets
+              key: database-username
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: haulage-logistics-secrets
+              key: database-password
+        - name: REDIS_URL
+          valueFrom:
+            secretKeyRef:
+              name: haulage-logistics-secrets
+              key: redis-url
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: haulage-logistics-config
+              key: kafka-bootstrap-servers
+        - name: EUREKA_CLIENT_SERVICE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: haulage-logistics-config
+              key: eureka-service-url
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: haulage-logistics-secrets
+              key: jwt-secret
+        - name: EXTERNAL_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: haulage-logistics-secrets
+              key: external-api-key
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: management
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: management
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /actuator/health
+            port: management
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 30
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: temp
+          mountPath: /tmp
+      volumes:
+      - name: logs
+        emptyDir: {}
+      - name: temp
+        emptyDir: {}
+      nodeSelector:
+        workload-type: backend
+      tolerations:
+      - key: "workload-type"
+        operator: "Equal"
+        value: "backend"
+        effect: "NoSchedule"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - haulage-logistics
+              topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haulage-booking-service
+  namespace: exalt-production
+  labels:
+    app: haulage-booking-service
+    component: booking
+    domain: haulage-logistics
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: haulage-booking-service
+  template:
+    metadata:
+      labels:
+        app: haulage-booking-service
+        component: booking
+        domain: haulage-logistics
+    spec:
+      serviceAccountName: haulage-logistics-sa
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: booking-service
+        image: exalt/haulage-booking-service:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "production"
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: haulage-logistics-secrets
+              key: database-url
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: haulage-logistics-config
+              key: kafka-bootstrap-servers
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: http
+          initialDelaySeconds: 45
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: http
+          initialDelaySeconds: 20
+          periodSeconds: 10
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haulage-frontend
+  namespace: exalt-production
+  labels:
+    app: haulage-frontend
+    component: frontend
+    domain: haulage-logistics
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: haulage-frontend
+  template:
+    metadata:
+      labels:
+        app: haulage-frontend
+        component: frontend
+        domain: haulage-logistics
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+      containers:
+      - name: frontend
+        image: exalt/haulage-frontend:latest
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          containerPort: 80
+          protocol: TCP
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: REACT_APP_API_URL
+          valueFrom:
+            configMapKeyRef:
+              name: haulage-logistics-config
+              key: api-url
+        - name: REACT_APP_WEBSOCKET_URL
+          valueFrom:
+            configMapKeyRef:
+              name: haulage-logistics-config
+              key: websocket-url
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: haulage-nginx-config

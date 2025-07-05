@@ -1,0 +1,378 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: haulage-logistics-hpa
+  namespace: exalt-production
+  labels:
+    app: haulage-logistics
+    component: backend
+    domain: haulage-logistics
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: haulage-logistics-deployment
+  minReplicas: 3
+  maxReplicas: 15
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Pods
+    pods:
+      metric:
+        name: requests_per_second
+      target:
+        type: AverageValue
+        averageValue: "100"
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 10
+        periodSeconds: 60
+      - type: Pods
+        value: 1
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+      - type: Pods
+        value: 3
+        periodSeconds: 60
+      selectPolicy: Max
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: haulage-booking-hpa
+  namespace: exalt-production
+  labels:
+    app: haulage-booking-service
+    component: booking
+    domain: haulage-logistics
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: haulage-booking-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 20
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 30
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+      selectPolicy: Max
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: haulage-frontend-hpa
+  namespace: exalt-production
+  labels:
+    app: haulage-frontend
+    component: frontend
+    domain: haulage-logistics
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: haulage-frontend
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 90
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+      selectPolicy: Max
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: haulage-tracking-hpa
+  namespace: exalt-production
+  labels:
+    app: haulage-tracking-service
+    component: tracking
+    domain: haulage-logistics
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: haulage-tracking-service
+  minReplicas: 3
+  maxReplicas: 12
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 65
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 75
+  - type: Object
+    object:
+      metric:
+        name: websocket_connections
+      target:
+        type: AverageValue
+        averageValue: "500"
+      describedObject:
+        apiVersion: v1
+        kind: Service
+        name: haulage-tracking-service
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      policies:
+      - type: Percent
+        value: 15
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Percent
+        value: 75
+        periodSeconds: 30
+      - type: Pods
+        value: 2
+        periodSeconds: 30
+      selectPolicy: Max
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: haulage-analytics-hpa
+  namespace: exalt-production
+  labels:
+    app: haulage-analytics-service
+    component: analytics
+    domain: haulage-logistics
+    runtime: nodejs
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: haulage-analytics-service
+  minReplicas: 2
+  maxReplicas: 8
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 20
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+      selectPolicy: Max
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: haulage-notification-hpa
+  namespace: exalt-production
+  labels:
+    app: haulage-notification-service
+    component: notification
+    domain: haulage-logistics
+    runtime: nodejs
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: haulage-notification-service
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 75
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 85
+  - type: Object
+    object:
+      metric:
+        name: notification_queue_length
+      target:
+        type: AverageValue
+        averageValue: "1000"
+      describedObject:
+        apiVersion: v1
+        kind: Service
+        name: haulage-notification-service
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      policies:
+      - type: Percent
+        value: 25
+        periodSeconds: 60
+      selectPolicy: Min
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+      selectPolicy: Max
+
+---
+# Pod Disruption Budgets for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: haulage-logistics-pdb
+  namespace: exalt-production
+  labels:
+    app: haulage-logistics
+    domain: haulage-logistics
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: haulage-logistics
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: haulage-booking-pdb
+  namespace: exalt-production
+  labels:
+    app: haulage-booking-service
+    domain: haulage-logistics
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: haulage-booking-service
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: haulage-tracking-pdb
+  namespace: exalt-production
+  labels:
+    app: haulage-tracking-service
+    domain: haulage-logistics
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: haulage-tracking-service
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: haulage-frontend-pdb
+  namespace: exalt-production
+  labels:
+    app: haulage-frontend
+    domain: haulage-logistics
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: haulage-frontend

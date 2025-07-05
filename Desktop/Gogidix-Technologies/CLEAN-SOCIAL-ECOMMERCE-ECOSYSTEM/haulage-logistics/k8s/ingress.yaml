@@ -1,0 +1,285 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: haulage-logistics-ingress
+  namespace: exalt-production
+  labels:
+    app: haulage-logistics
+    domain: haulage-logistics
+  annotations:
+    # AWS Load Balancer Controller
+    kubernetes.io/ingress.class: "alb"
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "15"
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "2"
+    
+    # SSL/TLS Configuration
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT:certificate/CERTIFICATE-ID
+    alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS-1-2-2017-01
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    
+    # Performance and Caching
+    alb.ingress.kubernetes.io/load-balancer-attributes: |
+      idle_timeout.timeout_seconds=60,
+      routing.http2.enabled=true,
+      access_logs.s3.enabled=true,
+      access_logs.s3.bucket=exalt-alb-logs,
+      access_logs.s3.prefix=haulage-logistics
+    
+    # Rate Limiting and Security
+    alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:us-east-1:ACCOUNT:webacl/haulage-logistics/WAF-ID
+    
+    # Monitoring and Tagging
+    alb.ingress.kubernetes.io/tags: |
+      Environment=production,
+      Application=haulage-logistics,
+      Team=logistics,
+      CostCenter=operations,
+      Domain=haulage
+    
+    # Custom headers and routing
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://haulage.exalt.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET, POST, PUT, DELETE, OPTIONS"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "DNT,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization"
+
+spec:
+  rules:
+  # Main haulage logistics portal
+  - host: haulage.exalt.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-frontend-service
+            port:
+              number: 80
+      - path: /api/
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-logistics-service
+            port:
+              number: 80
+      - path: /booking-api/
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-booking-service
+            port:
+              number: 80
+      - path: /tracking-api/
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-tracking-service
+            port:
+              number: 80
+      - path: /pricing-api/
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-pricing-service
+            port:
+              number: 80
+  
+  # Customer portal subdomain
+  - host: customer.haulage.exalt.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-customer-portal-service
+            port:
+              number: 80
+      - path: /api/
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-logistics-service
+            port:
+              number: 80
+  
+  # Fleet management subdomain
+  - host: fleet.haulage.exalt.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-fleet-service
+            port:
+              number: 80
+      - path: /api/fleet/
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-fleet-service
+            port:
+              number: 80
+      - path: /api/iot/
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-iot-integration-service
+            port:
+              number: 3000
+  
+  # Analytics and reporting subdomain
+  - host: analytics.haulage.exalt.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-analytics-service
+            port:
+              number: 3000
+      - path: /api/analytics/
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-analytics-service
+            port:
+              number: 3000
+  
+  # Mobile API subdomain
+  - host: mobile-api.haulage.exalt.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-mobile-api-service
+            port:
+              number: 3000
+      - path: /api/mobile/
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-mobile-api-service
+            port:
+              number: 3000
+  
+  tls:
+  - hosts:
+    - haulage.exalt.com
+    - customer.haulage.exalt.com
+    - fleet.haulage.exalt.com
+    - analytics.haulage.exalt.com
+    - mobile-api.haulage.exalt.com
+    secretName: haulage-logistics-tls
+
+---
+# WebSocket ingress for real-time features
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: haulage-websocket-ingress
+  namespace: exalt-production
+  labels:
+    app: haulage-websocket
+    domain: haulage-logistics
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/websocket-services: "haulage-tracking-service,haulage-notification-service"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$arg_user_id"
+spec:
+  rules:
+  - host: ws.haulage.exalt.com
+    http:
+      paths:
+      - path: /tracking
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-tracking-service
+            port:
+              number: 8080
+      - path: /notifications
+        pathType: Prefix
+        backend:
+          service:
+            name: haulage-notification-service
+            port:
+              number: 3001
+  tls:
+  - hosts:
+    - ws.haulage.exalt.com
+    secretName: haulage-websocket-tls
+
+---
+# Certificate management
+apiVersion: v1
+kind: Secret
+metadata:
+  name: haulage-logistics-tls
+  namespace: exalt-production
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-prod"
+type: kubernetes.io/tls
+data:
+  # Certificate data will be populated by cert-manager
+  tls.crt: ""
+  tls.key: ""
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: haulage-websocket-tls
+  namespace: exalt-production
+  annotations:
+    cert-manager.io/issuer: "letsencrypt-prod"
+type: kubernetes.io/tls
+data:
+  tls.crt: ""
+  tls.key: ""
+
+---
+# Certificate Issuer (cert-manager)
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: haulage-logistics-cert
+  namespace: exalt-production
+spec:
+  secretName: haulage-logistics-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - haulage.exalt.com
+  - customer.haulage.exalt.com
+  - fleet.haulage.exalt.com
+  - analytics.haulage.exalt.com
+  - mobile-api.haulage.exalt.com
+
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: haulage-websocket-cert
+  namespace: exalt-production
+spec:
+  secretName: haulage-websocket-tls
+  issuerRef:
+    name: letsencrypt-prod
+    kind: ClusterIssuer
+  dnsNames:
+  - ws.haulage.exalt.com

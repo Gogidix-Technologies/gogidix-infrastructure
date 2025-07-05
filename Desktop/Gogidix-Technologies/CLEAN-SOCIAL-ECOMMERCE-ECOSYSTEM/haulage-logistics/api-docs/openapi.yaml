@@ -1,0 +1,1247 @@
+openapi: 3.0.3
+info:
+  title: Haulage Logistics API
+  description: |
+    Comprehensive API documentation for the Exalt Haulage Logistics Domain.
+    This API provides endpoints for managing heavy-duty cargo transportation,
+    fleet management, route optimization, and customer booking services.
+    
+    ## Features
+    - **Fleet Management**: Track and manage heavy-duty vehicles and equipment
+    - **Route Optimization**: AI-powered route planning and optimization
+    - **Real-time Tracking**: GPS tracking and delivery monitoring
+    - **Cargo Management**: Handle various cargo types and special requirements
+    - **Customer Portal**: Self-service booking and tracking for customers
+    - **Pricing Engine**: Dynamic pricing based on distance, cargo, and demand
+    - **Integration**: Seamless integration with existing Exalt ecosystem
+    
+  version: 1.0.0
+  contact:
+    name: Exalt Haulage Logistics Team
+    email: haulage-api@exalt.com
+    url: https://haulage.exalt.com/support
+  license:
+    name: Proprietary
+    url: https://exalt.com/license
+  termsOfService: https://exalt.com/terms
+
+servers:
+  - url: https://haulage.exalt.com/api/v1
+    description: Production server
+  - url: https://staging-haulage.exalt.com/api/v1
+    description: Staging server
+  - url: http://localhost:8080/api/v1
+    description: Development server
+
+paths:
+  # Booking Management
+  /bookings:
+    get:
+      tags:
+        - Booking Management
+      summary: List all bookings
+      description: Retrieve a paginated list of haulage bookings with filtering options
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: size
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/BookingStatus'
+        - name: customerId
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Booking Management
+      summary: Create new booking
+      description: Create a new haulage booking request
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookingRequest'
+      responses:
+        '201':
+          description: Booking created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /bookings/{bookingId}:
+    get:
+      tags:
+        - Booking Management
+      summary: Get booking details
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Booking details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Booking Management
+      summary: Update booking
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBookingRequest'
+      responses:
+        '200':
+          description: Booking updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookingResponse'
+
+  # Fleet Management
+  /fleet/vehicles:
+    get:
+      tags:
+        - Fleet Management
+      summary: List fleet vehicles
+      description: Get all vehicles in the haulage fleet
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: '#/components/schemas/VehicleStatus'
+        - name: vehicleType
+          in: query
+          schema:
+            $ref: '#/components/schemas/VehicleType'
+        - name: location
+          in: query
+          schema:
+            type: string
+            description: Filter by current location
+      responses:
+        '200':
+          description: Fleet vehicles list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Vehicle'
+
+    post:
+      tags:
+        - Fleet Management
+      summary: Add new vehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateVehicleRequest'
+      responses:
+        '201':
+          description: Vehicle added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+
+  /fleet/vehicles/{vehicleId}:
+    get:
+      tags:
+        - Fleet Management
+      summary: Get vehicle details
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Vehicle details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleDetail'
+
+  /fleet/vehicles/{vehicleId}/location:
+    get:
+      tags:
+        - Fleet Management
+      summary: Get real-time vehicle location
+      parameters:
+        - name: vehicleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Vehicle location data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VehicleLocation'
+
+  # Route Optimization
+  /routes/optimize:
+    post:
+      tags:
+        - Route Optimization
+      summary: Optimize delivery route
+      description: Calculate optimal route for multiple delivery stops
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RouteOptimizationRequest'
+      responses:
+        '200':
+          description: Optimized route
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OptimizedRoute'
+
+  /routes/{routeId}/tracking:
+    get:
+      tags:
+        - Route Optimization
+      summary: Track route progress
+      parameters:
+        - name: routeId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Route tracking information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RouteTracking'
+
+  # Pricing
+  /pricing/quote:
+    post:
+      tags:
+        - Pricing
+      summary: Get shipping quote
+      description: Calculate pricing for haulage service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PricingRequest'
+      responses:
+        '200':
+          description: Pricing quote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PricingQuote'
+
+  # Customer Management
+  /customers:
+    get:
+      tags:
+        - Customer Management
+      summary: List customers
+      responses:
+        '200':
+          description: Customer list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Customer'
+
+    post:
+      tags:
+        - Customer Management
+      summary: Create new customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCustomerRequest'
+      responses:
+        '201':
+          description: Customer created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Customer'
+
+  /customers/{customerId}:
+    get:
+      tags:
+        - Customer Management
+      summary: Get customer details
+      parameters:
+        - name: customerId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Customer details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerDetail'
+
+  # Analytics and Reporting
+  /analytics/dashboard:
+    get:
+      tags:
+        - Analytics
+      summary: Get dashboard metrics
+      responses:
+        '200':
+          description: Dashboard analytics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardMetrics'
+
+  /analytics/fleet-utilization:
+    get:
+      tags:
+        - Analytics
+      summary: Fleet utilization report
+      parameters:
+        - name: startDate
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: Fleet utilization data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FleetUtilizationReport'
+
+components:
+  schemas:
+    # Core Booking Models
+    BookingResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bookingNumber:
+          type: string
+          example: "HLG-2025-001234"
+        customerId:
+          type: string
+          format: uuid
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        pickupLocation:
+          $ref: '#/components/schemas/Location'
+        deliveryLocation:
+          $ref: '#/components/schemas/Location'
+        scheduledPickupDate:
+          type: string
+          format: date-time
+        scheduledDeliveryDate:
+          type: string
+          format: date-time
+        cargo:
+          $ref: '#/components/schemas/Cargo'
+        assignedVehicle:
+          $ref: '#/components/schemas/Vehicle'
+        totalCost:
+          type: number
+          format: decimal
+        currency:
+          type: string
+          example: "USD"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    CreateBookingRequest:
+      type: object
+      required:
+        - customerId
+        - pickupLocation
+        - deliveryLocation
+        - scheduledPickupDate
+        - cargo
+      properties:
+        customerId:
+          type: string
+          format: uuid
+        pickupLocation:
+          $ref: '#/components/schemas/Location'
+        deliveryLocation:
+          $ref: '#/components/schemas/Location'
+        scheduledPickupDate:
+          type: string
+          format: date-time
+        scheduledDeliveryDate:
+          type: string
+          format: date-time
+        cargo:
+          $ref: '#/components/schemas/Cargo'
+        specialInstructions:
+          type: string
+        priorityLevel:
+          $ref: '#/components/schemas/PriorityLevel'
+
+    UpdateBookingRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/BookingStatus'
+        scheduledPickupDate:
+          type: string
+          format: date-time
+        scheduledDeliveryDate:
+          type: string
+          format: date-time
+        specialInstructions:
+          type: string
+        assignedVehicleId:
+          type: string
+          format: uuid
+
+    BookingListResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookingResponse'
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer
+        size:
+          type: integer
+        number:
+          type: integer
+
+    # Fleet Models
+    Vehicle:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        licensePlate:
+          type: string
+          example: "HLG-001"
+        vehicleType:
+          $ref: '#/components/schemas/VehicleType'
+        manufacturer:
+          type: string
+          example: "Volvo"
+        model:
+          type: string
+          example: "FH16"
+        year:
+          type: integer
+          example: 2023
+        capacity:
+          $ref: '#/components/schemas/VehicleCapacity'
+        status:
+          $ref: '#/components/schemas/VehicleStatus'
+        currentLocation:
+          $ref: '#/components/schemas/Location'
+        driverId:
+          type: string
+          format: uuid
+        lastMaintenance:
+          type: string
+          format: date
+        nextMaintenance:
+          type: string
+          format: date
+
+    VehicleDetail:
+      allOf:
+        - $ref: '#/components/schemas/Vehicle'
+        - type: object
+          properties:
+            specifications:
+              $ref: '#/components/schemas/VehicleSpecifications'
+            maintenanceHistory:
+              type: array
+              items:
+                $ref: '#/components/schemas/MaintenanceRecord'
+            currentTrip:
+              $ref: '#/components/schemas/Trip'
+
+    CreateVehicleRequest:
+      type: object
+      required:
+        - licensePlate
+        - vehicleType
+        - manufacturer
+        - model
+        - year
+        - capacity
+      properties:
+        licensePlate:
+          type: string
+        vehicleType:
+          $ref: '#/components/schemas/VehicleType'
+        manufacturer:
+          type: string
+        model:
+          type: string
+        year:
+          type: integer
+        capacity:
+          $ref: '#/components/schemas/VehicleCapacity'
+        specifications:
+          $ref: '#/components/schemas/VehicleSpecifications'
+
+    VehicleLocation:
+      type: object
+      properties:
+        vehicleId:
+          type: string
+          format: uuid
+        location:
+          $ref: '#/components/schemas/Location'
+        heading:
+          type: number
+          description: Vehicle heading in degrees
+        speed:
+          type: number
+          description: Current speed in km/h
+        timestamp:
+          type: string
+          format: date-time
+        odometer:
+          type: number
+          description: Odometer reading in kilometers
+
+    # Route Models
+    RouteOptimizationRequest:
+      type: object
+      required:
+        - startLocation
+        - destinations
+        - vehicleType
+      properties:
+        startLocation:
+          $ref: '#/components/schemas/Location'
+        destinations:
+          type: array
+          items:
+            $ref: '#/components/schemas/Destination'
+        vehicleType:
+          $ref: '#/components/schemas/VehicleType'
+        constraints:
+          $ref: '#/components/schemas/RouteConstraints'
+        preferences:
+          $ref: '#/components/schemas/RoutePreferences'
+
+    OptimizedRoute:
+      type: object
+      properties:
+        routeId:
+          type: string
+          format: uuid
+        waypoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/Waypoint'
+        totalDistance:
+          type: number
+          description: Total distance in kilometers
+        estimatedDuration:
+          type: number
+          description: Estimated duration in minutes
+        estimatedFuelCost:
+          type: number
+        optimizationScore:
+          type: number
+          description: Route efficiency score (0-100)
+        alternativeRoutes:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlternativeRoute'
+
+    RouteTracking:
+      type: object
+      properties:
+        routeId:
+          type: string
+          format: uuid
+        currentWaypoint:
+          type: integer
+        completedWaypoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompletedWaypoint'
+        estimatedArrival:
+          type: string
+          format: date-time
+        delayMinutes:
+          type: integer
+        progressPercentage:
+          type: number
+
+    # Pricing Models
+    PricingRequest:
+      type: object
+      required:
+        - pickupLocation
+        - deliveryLocation
+        - cargo
+      properties:
+        pickupLocation:
+          $ref: '#/components/schemas/Location'
+        deliveryLocation:
+          $ref: '#/components/schemas/Location'
+        cargo:
+          $ref: '#/components/schemas/Cargo'
+        scheduledDate:
+          type: string
+          format: date
+        priorityLevel:
+          $ref: '#/components/schemas/PriorityLevel'
+        customerId:
+          type: string
+          format: uuid
+
+    PricingQuote:
+      type: object
+      properties:
+        quoteId:
+          type: string
+          format: uuid
+        basePrice:
+          type: number
+        distanceCharge:
+          type: number
+        cargoSurcharge:
+          type: number
+        prioritySurcharge:
+          type: number
+        totalPrice:
+          type: number
+        currency:
+          type: string
+        validUntil:
+          type: string
+          format: date-time
+        breakdown:
+          $ref: '#/components/schemas/PricingBreakdown'
+
+    # Customer Models
+    Customer:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        companyName:
+          type: string
+        contactPerson:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          $ref: '#/components/schemas/Address'
+        customerType:
+          $ref: '#/components/schemas/CustomerType'
+        creditRating:
+          type: string
+        registrationDate:
+          type: string
+          format: date
+
+    CreateCustomerRequest:
+      type: object
+      required:
+        - companyName
+        - contactPerson
+        - email
+        - phone
+        - address
+        - customerType
+      properties:
+        companyName:
+          type: string
+        contactPerson:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        address:
+          $ref: '#/components/schemas/Address'
+        customerType:
+          $ref: '#/components/schemas/CustomerType'
+
+    CustomerDetail:
+      allOf:
+        - $ref: '#/components/schemas/Customer'
+        - type: object
+          properties:
+            bookingHistory:
+              type: array
+              items:
+                $ref: '#/components/schemas/BookingResponse'
+            totalBookings:
+              type: integer
+            totalRevenue:
+              type: number
+            lastBookingDate:
+              type: string
+              format: date
+
+    # Analytics Models
+    DashboardMetrics:
+      type: object
+      properties:
+        totalBookings:
+          type: integer
+        activeBookings:
+          type: integer
+        totalRevenue:
+          type: number
+        fleetUtilization:
+          type: number
+        averageDeliveryTime:
+          type: number
+        customerSatisfaction:
+          type: number
+        topRoutes:
+          type: array
+          items:
+            $ref: '#/components/schemas/RouteMetric'
+
+    FleetUtilizationReport:
+      type: object
+      properties:
+        reportPeriod:
+          $ref: '#/components/schemas/DateRange'
+        totalVehicles:
+          type: integer
+        averageUtilization:
+          type: number
+        vehicleMetrics:
+          type: array
+          items:
+            $ref: '#/components/schemas/VehicleUtilizationMetric'
+
+    # Supporting Models
+    Location:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: number
+          format: double
+        longitude:
+          type: number
+          format: double
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        country:
+          type: string
+        postalCode:
+          type: string
+
+    Cargo:
+      type: object
+      required:
+        - type
+        - weight
+        - dimensions
+      properties:
+        type:
+          $ref: '#/components/schemas/CargoType'
+        description:
+          type: string
+        weight:
+          type: number
+          description: Weight in kilograms
+        dimensions:
+          $ref: '#/components/schemas/Dimensions'
+        value:
+          type: number
+        hazardous:
+          type: boolean
+        specialHandling:
+          type: array
+          items:
+            type: string
+
+    Dimensions:
+      type: object
+      properties:
+        length:
+          type: number
+        width:
+          type: number
+        height:
+          type: number
+        unit:
+          type: string
+          enum: [m, cm, ft, in]
+
+    VehicleCapacity:
+      type: object
+      properties:
+        maxWeight:
+          type: number
+          description: Maximum weight capacity in kg
+        maxVolume:
+          type: number
+          description: Maximum volume in cubic meters
+        maxLength:
+          type: number
+        maxWidth:
+          type: number
+        maxHeight:
+          type: number
+
+    VehicleSpecifications:
+      type: object
+      properties:
+        engineType:
+          type: string
+        fuelType:
+          type: string
+        fuelCapacity:
+          type: number
+        emissionStandard:
+          type: string
+        gpsEnabled:
+          type: boolean
+        temperatureControlled:
+          type: boolean
+        hydraulicLift:
+          type: boolean
+
+    MaintenanceRecord:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        date:
+          type: string
+          format: date
+        type:
+          type: string
+        description:
+          type: string
+        cost:
+          type: number
+        serviceProvider:
+          type: string
+
+    Trip:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        bookingId:
+          type: string
+          format: uuid
+        startTime:
+          type: string
+          format: date-time
+        estimatedEndTime:
+          type: string
+          format: date-time
+        currentStatus:
+          type: string
+        progress:
+          type: number
+
+    Pageable:
+      type: object
+      properties:
+        sort:
+          type: object
+        offset:
+          type: integer
+        pageSize:
+          type: integer
+        pageNumber:
+          type: integer
+        paged:
+          type: boolean
+        unpaged:
+          type: boolean
+
+    # Enums
+    BookingStatus:
+      type: string
+      enum:
+        - PENDING
+        - CONFIRMED
+        - IN_PROGRESS
+        - DELIVERED
+        - CANCELLED
+        - ON_HOLD
+
+    VehicleStatus:
+      type: string
+      enum:
+        - AVAILABLE
+        - IN_TRANSIT
+        - MAINTENANCE
+        - OUT_OF_SERVICE
+        - LOADING
+        - UNLOADING
+
+    VehicleType:
+      type: string
+      enum:
+        - HEAVY_TRUCK
+        - TRAILER
+        - CRANE_TRUCK
+        - FLATBED
+        - CONTAINER_TRUCK
+        - SPECIALIZED
+
+    CargoType:
+      type: string
+      enum:
+        - CONSTRUCTION_MATERIALS
+        - MACHINERY
+        - CONTAINERS
+        - BULK_MATERIALS
+        - OVERSIZED_CARGO
+        - HAZARDOUS_MATERIALS
+
+    PriorityLevel:
+      type: string
+      enum:
+        - STANDARD
+        - HIGH
+        - URGENT
+        - CRITICAL
+
+    CustomerType:
+      type: string
+      enum:
+        - CONSTRUCTION_COMPANY
+        - MANUFACTURING
+        - LOGISTICS_PROVIDER
+        - GOVERNMENT
+        - INDIVIDUAL
+
+    # Additional supporting schemas would be defined here...
+    Destination:
+      type: object
+      properties:
+        location:
+          $ref: '#/components/schemas/Location'
+        estimatedServiceTime:
+          type: number
+        priority:
+          type: integer
+
+    RouteConstraints:
+      type: object
+      properties:
+        maxDistance:
+          type: number
+        maxDuration:
+          type: number
+        avoidTolls:
+          type: boolean
+        avoidHighways:
+          type: boolean
+        timeWindows:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeWindow'
+
+    RoutePreferences:
+      type: object
+      properties:
+        optimizeFor:
+          type: string
+          enum: [DISTANCE, TIME, FUEL, COST]
+        roadTypes:
+          type: array
+          items:
+            type: string
+
+    Waypoint:
+      type: object
+      properties:
+        sequence:
+          type: integer
+        location:
+          $ref: '#/components/schemas/Location'
+        estimatedArrival:
+          type: string
+          format: date-time
+        serviceTime:
+          type: number
+
+    AlternativeRoute:
+      type: object
+      properties:
+        routeIndex:
+          type: integer
+        distance:
+          type: number
+        duration:
+          type: number
+        description:
+          type: string
+
+    CompletedWaypoint:
+      type: object
+      properties:
+        sequence:
+          type: integer
+        completedAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+
+    PricingBreakdown:
+      type: object
+      properties:
+        basePriceDetails:
+          type: string
+        distanceChargeDetails:
+          type: string
+        cargoSurchargeDetails:
+          type: string
+        additionalFees:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdditionalFee'
+
+    AdditionalFee:
+      type: object
+      properties:
+        name:
+          type: string
+        amount:
+          type: number
+        description:
+          type: string
+
+    RouteMetric:
+      type: object
+      properties:
+        routeName:
+          type: string
+        frequency:
+          type: integer
+        averageDistance:
+          type: number
+        revenue:
+          type: number
+
+    VehicleUtilizationMetric:
+      type: object
+      properties:
+        vehicleId:
+          type: string
+        licensePlate:
+          type: string
+        utilizationPercentage:
+          type: number
+        totalDistance:
+          type: number
+        totalRevenue:
+          type: number
+
+    DateRange:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+
+    TimeWindow:
+      type: object
+      properties:
+        startTime:
+          type: string
+          format: time
+        endTime:
+          type: string
+          format: time
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+              message:
+                type: string
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Booking Management
+    description: Manage haulage bookings and reservations
+  - name: Fleet Management
+    description: Vehicle and fleet operations
+  - name: Route Optimization
+    description: Route planning and optimization
+  - name: Pricing
+    description: Pricing and quotes
+  - name: Customer Management
+    description: Customer operations
+  - name: Analytics
+    description: Analytics and reporting

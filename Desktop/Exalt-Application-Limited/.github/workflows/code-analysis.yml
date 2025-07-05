@@ -1,0 +1,217 @@
+name: 🔍 Code Analysis & Security Scanning
+
+on:
+  push:
+    branches: [ dev, staging, main ]
+  pull_request:
+    branches: [ dev, staging, main ]
+
+jobs:
+  sonarcloud:
+    name: 📊 SonarCloud Analysis
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service-type: [java, nodejs]
+        include:
+          - service-type: java
+            scan-command: mvn sonar:sonar
+            build-command: mvn clean verify
+            file-pattern: "**/pom.xml"
+          - service-type: nodejs
+            scan-command: npx sonar-scanner
+            build-command: npm ci
+            file-pattern: "**/package.json"
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Shallow clones should be disabled for better relevancy of analysis
+
+      - name: Set up JDK 17
+        if: matrix.service-type == 'java'
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: 'temurin'
+          
+      - name: Cache Maven packages
+        if: matrix.service-type == 'java'
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2
+
+      - name: Set up Node.js 18
+        if: matrix.service-type == 'nodejs'
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Find services of type ${{ matrix.service-type }}
+        id: find-services
+        run: |
+          if [ "${{ matrix.service-type }}" = "java" ]; then
+            SERVICES=$(find . -name "pom.xml" -type f -not -path "*/node_modules/*" -not -path "*/target/*" | sed 's|/pom.xml||g')
+          else
+            SERVICES=$(find . -name "package.json" -type f -not -path "*/node_modules/*" -not -path "*/target/*" | sed 's|/package.json||g')
+          fi
+          
+          if [ -z "$SERVICES" ]; then
+            echo "No ${{ matrix.service-type }} services found"
+            exit 0
+          fi
+          
+          echo "Found services: $SERVICES"
+          echo "services=$SERVICES" >> $GITHUB_OUTPUT
+
+      - name: Build and analyze Java services
+        if: matrix.service-type == 'java'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          SERVICES="${{ steps.find-services.outputs.services }}"
+          for SERVICE in $SERVICES; do
+            echo "Analyzing $SERVICE"
+            cd $SERVICE
+            # Create sonar-project.properties if it doesn't exist
+            if [ ! -f "sonar-project.properties" ]; then
+              SERVICE_NAME=$(basename $SERVICE)
+              echo "sonar.projectKey=Exalt-Application-Limited_$SERVICE_NAME" >> sonar-project.properties
+              echo "sonar.organization=exalt-application-limited" >> sonar-project.properties
+              echo "sonar.sources=src/main" >> sonar-project.properties
+              echo "sonar.tests=src/test" >> sonar-project.properties
+              echo "sonar.java.binaries=target/classes" >> sonar-project.properties
+              echo "sonar.java.test.binaries=target/test-classes" >> sonar-project.properties
+              echo "sonar.java.libraries=target/dependency/*.jar" >> sonar-project.properties
+            fi
+            
+            mvn clean verify sonar:sonar -B
+            cd $GITHUB_WORKSPACE
+          done
+
+      - name: Build and analyze Node.js services
+        if: matrix.service-type == 'nodejs'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          SERVICES="${{ steps.find-services.outputs.services }}"
+          for SERVICE in $SERVICES; do
+            echo "Analyzing $SERVICE"
+            cd $SERVICE
+            # Create sonar-project.properties if it doesn't exist
+            if [ ! -f "sonar-project.properties" ]; then
+              SERVICE_NAME=$(basename $SERVICE)
+              echo "sonar.projectKey=Exalt-Application-Limited_$SERVICE_NAME" >> sonar-project.properties
+              echo "sonar.organization=exalt-application-limited" >> sonar-project.properties
+              echo "sonar.sources=src" >> sonar-project.properties
+              echo "sonar.tests=test,__tests__" >> sonar-project.properties
+              echo "sonar.javascript.lcov.reportPaths=coverage/lcov.info" >> sonar-project.properties
+            fi
+            
+            npm ci
+            npm test -- --coverage || true
+            npx sonar-scanner
+            cd $GITHUB_WORKSPACE
+          done
+
+  snyk:
+    name: 🔒 Snyk Security Scan
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [java, javascript]
+        include:
+          - language: java
+            project-pattern: "**/pom.xml"
+          - language: javascript
+            project-pattern: "**/package.json"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Snyk CLI
+        uses: snyk/actions/setup@master
+
+      - name: Set up JDK 17
+        if: matrix.language == 'java'
+        uses: actions/setup-java@v3
+        with:
+          java-version: 17
+          distribution: 'temurin'
+
+      - name: Set up Node.js
+        if: matrix.language == 'javascript'
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Find project files
+        id: find-projects
+        run: |
+          FILES=$(find . -name "${{ matrix.project-pattern }}" -not -path "*/node_modules/*" -not -path "*/target/*")
+          if [ -z "$FILES" ]; then
+            echo "No ${{ matrix.language }} projects found"
+            exit 0
+          fi
+          echo "Found projects: $FILES"
+          echo "files=$FILES" >> $GITHUB_OUTPUT
+
+      - name: Snyk test and monitor
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: |
+          FILES="${{ steps.find-projects.outputs.files }}"
+          for FILE in $FILES; do
+            DIR=$(dirname $FILE)
+            cd $DIR
+            
+            # Run Snyk test to find vulnerabilities
+            snyk test --severity-threshold=high || true
+            
+            # Monitor the project in Snyk
+            snyk monitor --org=exalt-application-limited
+            
+            # Generate SARIF file for GitHub Security tab
+            snyk test --sarif-file-output=snyk.sarif || true
+            
+            cd $GITHUB_WORKSPACE
+          done
+        if: env.SNYK_TOKEN != ''
+
+      - name: Upload Snyk SARIF files
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: '**/snyk.sarif'
+        if: always()
+
+  deepsource:
+    name: 🧠 DeepSource AI Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up CLI
+        uses: deepsourcelabs/setup-cli@v1
+
+      - name: DeepSource Report
+        env:
+          DEEPSOURCE_DSN: ${{ secrets.DEEPSOURCE_DSN }}
+        run: |
+          # Run analysis on the repository
+          deepsource report --analyzer test-coverage

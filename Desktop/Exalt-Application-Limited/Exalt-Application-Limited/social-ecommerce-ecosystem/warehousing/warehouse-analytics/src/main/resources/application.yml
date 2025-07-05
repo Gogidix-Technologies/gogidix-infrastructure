@@ -1,0 +1,343 @@
+server:
+  port: 8083
+  servlet:
+    context-path: /warehouse-analytics
+
+spring:
+  application:
+    name: warehouse-analytics-service
+  
+  profiles:
+    active: development
+  
+  # Database Configuration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/warehouse_analytics
+    username: ${DB_USERNAME:warehouse_user}
+    password: ${DB_PASSWORD:warehouse_pass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      maximum-pool-size: 10
+      minimum-idle: 2
+      pool-name: WarehouseAnalyticsHikariCP
+  
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        use_sql_comments: true
+        order_inserts: true
+        order_updates: true
+        jdbc:
+          batch_size: 20
+          fetch_size: 100
+        temp:
+          use_jdbc_metadata_defaults: false
+    open-in-view: false
+  
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+  
+  # Redis Configuration
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 1
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+        max-wait: -1ms
+  
+  # Elasticsearch Configuration
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS:http://localhost:9200}
+    username: ${ELASTICSEARCH_USERNAME:}
+    password: ${ELASTICSEARCH_PASSWORD:}
+    connection-timeout: 10s
+    socket-timeout: 60s
+  
+  # Kafka Configuration
+  kafka:
+    bootstrap-servers: ${KAFKA_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      retries: 3
+      acks: all
+    consumer:
+      group-id: warehouse-analytics-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "com.ecosystem.warehousing.analytics.dto"
+  
+  # Security Configuration
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${JWT_ISSUER_URI:http://localhost:8080/auth/realms/warehouse-ecosystem}
+          jwk-set-uri: ${JWT_JWK_SET_URI:http://localhost:8080/auth/realms/warehouse-ecosystem/protocol/openid_connect/certs}
+
+# Management Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,flyway
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      percentiles:
+        http.server.requests: 0.5, 0.75, 0.95, 0.99
+  health:
+    elasticsearch:
+      enabled: true
+    redis:
+      enabled: true
+
+# Logging Configuration
+logging:
+  level:
+    com.ecosystem.warehousing.analytics: DEBUG
+    org.springframework.data.elasticsearch: INFO
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/warehouse-analytics.log
+    max-size: 10MB
+    max-history: 30
+
+# Custom Application Configuration
+warehouse:
+  analytics:
+    # Performance calculation settings
+    performance:
+      weights:
+        efficiency: 0.30
+        accuracy: 0.25
+        speed: 0.25
+        cost: 0.20
+      scoring:
+        enabled: true
+        recalculate-interval: 1h
+    
+    # Alert configuration
+    alerts:
+      enabled: true
+      processing-interval: 5m
+      thresholds:
+        critical: 30
+        high: 50
+        medium: 70
+        low: 85
+      anomaly:
+        detection-enabled: true
+        standard-deviations: 2.0
+        minimum-data-points: 10
+    
+    # Trend analysis settings
+    trends:
+      analysis-enabled: true
+      default-period-days: 30
+      forecast:
+        enabled: true
+        max-days: 90
+        confidence-threshold: 0.75
+    
+    # Data retention settings
+    retention:
+      active-metrics-days: 365
+      archived-metrics-years: 2
+      cleanup-schedule: "0 2 * * SUN"
+    
+    # Search configuration
+    search:
+      elasticsearch:
+        enabled: true
+        fallback-to-db: true
+        timeout: 30s
+      indexing:
+        batch-size: 100
+        async: true
+    
+    # Export settings
+    export:
+      csv:
+        enabled: true
+        max-records: 50000
+      excel:
+        enabled: false
+        max-records: 10000
+      compression:
+        enabled: true
+        algorithm: gzip
+    
+    # Integration settings
+    integration:
+      bi-sync:
+        enabled: false
+        schedule: "0 1 * * *"
+      api-rate-limit:
+        requests-per-minute: 1000
+        burst-capacity: 100
+
+# OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+  info:
+    title: Warehouse Analytics Service API
+    description: Comprehensive analytics service for warehouse operations monitoring and optimization
+    version: 1.0.0
+    contact:
+      name: Warehouse Analytics Team
+      email: analytics@ecosystem.com
+    license:
+      name: MIT License
+      url: https://opensource.org/licenses/MIT
+
+---
+# Development Profile
+spring:
+  config:
+    activate:
+      on-profile: development
+  
+  datasource:
+    url: jdbc:postgresql://localhost:5432/warehouse_analytics_dev
+    hikari:
+      maximum-pool-size: 5
+  
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+  
+  elasticsearch:
+    uris: http://localhost:9200
+  
+  redis:
+    host: localhost
+    port: 6379
+
+logging:
+  level:
+    com.ecosystem.warehousing.analytics: DEBUG
+    root: INFO
+
+---
+# Test Profile
+spring:
+  config:
+    activate:
+      on-profile: test
+  
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    database-platform: org.hibernate.dialect.H2Dialect
+  
+  flyway:
+    enabled: false
+  
+  elasticsearch:
+    uris: http://localhost:9201
+  
+  redis:
+    host: localhost
+    port: 6380
+
+logging:
+  level:
+    com.ecosystem.warehousing.analytics: DEBUG
+    org.springframework.test: DEBUG
+
+---
+# Production Profile
+spring:
+  config:
+    activate:
+      on-profile: production
+  
+  datasource:
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 20
+      connection-timeout: 20000
+  
+  jpa:
+    show-sql: false
+    hibernate:
+      ddl-auto: validate
+  
+  elasticsearch:
+    uris: ${ELASTICSEARCH_URIS}
+    username: ${ELASTICSEARCH_USERNAME}
+    password: ${ELASTICSEARCH_PASSWORD}
+  
+  redis:
+    host: ${REDIS_HOST}
+    port: ${REDIS_PORT}
+    password: ${REDIS_PASSWORD}
+
+warehouse:
+  analytics:
+    performance:
+      recalculate-interval: 30m
+    alerts:
+      processing-interval: 2m
+    retention:
+      cleanup-schedule: "0 3 * * SUN"
+
+logging:
+  level:
+    com.ecosystem.warehousing.analytics: INFO
+    root: WARN
+  file:
+    name: /var/log/warehouse-analytics/application.log

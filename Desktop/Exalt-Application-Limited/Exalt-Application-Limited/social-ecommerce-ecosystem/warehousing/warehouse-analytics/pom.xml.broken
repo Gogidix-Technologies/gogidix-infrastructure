@@ -1,0 +1,275 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" 
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    
+    <modelVersion>4.0.0</modelVersion>
+    
+    <parent>
+        <groupId>com.exalt.warehousing</groupId>
+        <artifactId>warehouse-analytics</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+    
+    <groupId>com.exalt.warehousing</groupId>
+    <artifactId>warehouse-analytics</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>jar</packaging>
+    <name>Warehouse Analytics Service</name>
+    <description>Advanced analytics service for warehouse operations including KPI reporting, performance analysis, predictive analytics, and real-time monitoring</description>
+    
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <spring-cloud.version>2022.0.3</spring-cloud.version>
+        <springdoc.version>2.1.0</springdoc.version>
+        <testcontainers.version>1.18.1</testcontainers.version>
+        <lombok.version>1.18.28</lombok.version>
+        <mapstruct.version>1.5.5.Final</mapstruct.version>
+        <elasticsearch.version>8.8.1</elasticsearch.version>
+        <micrometer.version>1.11.1</micrometer.version>
+    </properties>
+    
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>warehouse-analytics</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>warehouse-analytics</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+    
+    <dependencies>
+        <!-- Spring Boot Starters -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        
+        <!-- Database -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        
+        <!-- Analytics & Search -->
+        <!-- Elasticsearch dependencies are included via spring-boot-starter-data-elasticsearch -->
+        
+        <!-- Cloud & Messaging -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        
+        <!-- Metrics & Monitoring -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <version>${micrometer.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        
+        <!-- API Documentation -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+        
+        <!-- Utilities -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <version>${mapstruct.version}</version>
+        </dependency>
+        
+        <!-- JSON Processing -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        
+        <!-- Math & Statistics -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <version>3.6.1</version>
+        </dependency>
+        
+        <!-- Scheduling & Async -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+        </dependency>
+        
+        <!-- Testing -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>warehouse-analytics</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+    
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>warehouse-analytics</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>com.exalt.warehousing</groupId>
+                            <artifactId>warehouse-analytics</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+            
+            <plugin>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>warehouse-analytics</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>com.exalt.warehousing</groupId>
+                            <artifactId>warehouse-analytics</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <path>
+                            <groupId>com.exalt.warehousing</groupId>
+                            <artifactId>warehouse-analytics</artifactId>
+                            <version>${mapstruct.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+            
+            <plugin>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>warehouse-analytics</artifactId>
+                <version>3.1.5</version>
+            </plugin>
+            
+            <plugin>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>warehouse-analytics</artifactId>
+                <version>3.1.5</version>
+            </plugin>
+            
+            <plugin>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>warehouse-analytics</artifactId>
+                <version>0.8.10</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

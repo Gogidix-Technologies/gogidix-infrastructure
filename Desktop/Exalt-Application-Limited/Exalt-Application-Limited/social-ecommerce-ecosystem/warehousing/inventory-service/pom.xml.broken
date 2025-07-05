@@ -1,0 +1,179 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.exalt.warehousing</groupId>
+        <artifactId>inventory</artifactId>
+        <version>1.0.0</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>inventory</artifactId>
+    <packaging>jar</packaging>
+    <name>Inventory Service</name>
+    <description>Inventory management service for warehousing ecosystem</description>
+
+    <properties>
+        <testcontainers.version>1.19.1</testcontainers.version>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <!-- Warehousing Shared Library -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <!-- Spring Boot Starters -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+        
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <!-- OpenAPI/Swagger -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <!-- Resilience4j -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <!-- Spring Cloud -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <!-- Kafka -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <!-- Database -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <!-- Redis -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+        </dependency>
+
+        <!-- Lombok -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- Testing -->
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.exalt.warehousing</groupId>
+            <artifactId>inventory</artifactId>
+            <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.exalt.warehousing</groupId>
+                <artifactId>inventory</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>com.exalt.warehousing</groupId>
+                            <artifactId>inventory</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

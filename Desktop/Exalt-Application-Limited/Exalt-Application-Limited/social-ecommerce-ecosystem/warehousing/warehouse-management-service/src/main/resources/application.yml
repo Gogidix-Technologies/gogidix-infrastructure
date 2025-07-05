@@ -1,0 +1,100 @@
+spring:
+  application:
+    name: warehouse-management-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/warehouse_management_db}
+    username: ${DATABASE_USER:warehouse_user}
+    password: ${DATABASE_PASSWORD:warehouse_pass}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: warehouse-management-service
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.ecosystem.warehousing.*"
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+  cloud:
+    config:
+      uri: ${CONFIG_SERVER_URL:http://localhost:8888}
+      fail-fast: false
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:8761/eureka/}
+  instance:
+    preferIpAddress: true
+
+server:
+  port: ${SERVER_PORT:8086}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Warehouse Management Service Specific Configuration
+warehouse-management:
+  kafka:
+    topics:
+      warehouse-events: warehouse-events
+      task-events: task-events
+      inventory-sync: inventory-sync
+      order-sync: order-sync
+  task:
+    assignment:
+      algorithm: LOAD_BALANCED # Options: ROUND_ROBIN, LOAD_BALANCED, SKILL_BASED
+    auto-reassign:
+      enabled: true
+      idle-minutes: 30
+  qr-code:
+    size: 300
+    format: PNG
+  shipping:
+    carriers:
+      - name: DHL
+        api-url: ${DHL_API_URL:https://api.dhl.com}
+        api-key: ${DHL_API_KEY:}
+      - name: UPS
+        api-url: ${UPS_API_URL:https://api.ups.com}
+        api-key: ${UPS_API_KEY:}
+      - name: FEDEX
+        api-url: ${FEDEX_API_URL:https://api.fedex.com}
+        api-key: ${FEDEX_API_KEY:}
+
+# Feign Client Configuration
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 5000
+      inventory-service:
+        url: ${INVENTORY_SERVICE_URL:http://inventory-service:8084}
+      order-service:
+        url: ${ORDER_SERVICE_URL:http://order-service:8080}
+      fulfillment-service:
+        url: ${FULFILLMENT_SERVICE_URL:http://fulfillment-service:8085}

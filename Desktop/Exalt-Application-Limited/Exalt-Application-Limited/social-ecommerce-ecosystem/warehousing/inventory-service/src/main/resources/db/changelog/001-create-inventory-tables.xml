@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.15.xsd">
+
+    <changeSet id="001-create-inventory-items-table" author="inventory-service">
+        <createTable tableName="inventory_items">
+            <!-- Primary Key -->
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            
+            <!-- Core Identification -->
+            <column name="sku" type="VARCHAR(100)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="product_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="vendor_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Location Information -->
+            <column name="warehouse_id" type="BIGINT"/>
+            <column name="location" type="VARCHAR(200)"/>
+            <column name="zone" type="VARCHAR(50)"/>
+            
+            <!-- Quantity Management -->
+            <column name="available_quantity" type="DECIMAL(12,3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="reserved_quantity" type="DECIMAL(12,3)" defaultValue="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="total_quantity" type="DECIMAL(12,3)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="committed_quantity" type="DECIMAL(12,3)" defaultValue="0"/>
+            
+            <!-- Stock Management -->
+            <column name="reorder_point" type="DECIMAL(12,3)"/>
+            <column name="maximum_stock_level" type="DECIMAL(12,3)"/>
+            <column name="minimum_stock_level" type="DECIMAL(12,3)"/>
+            
+            <!-- Status and Classification -->
+            <column name="status" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="category" type="VARCHAR(100)"/>
+            <column name="subcategory" type="VARCHAR(100)"/>
+            
+            <!-- Supplier and Procurement -->
+            <column name="supplier_id" type="BIGINT"/>
+            <column name="supplier_sku" type="VARCHAR(100)"/>
+            <column name="purchase_order_number" type="VARCHAR(50)"/>
+            
+            <!-- Cost and Valuation -->
+            <column name="unit_cost" type="DECIMAL(10,2)"/>
+            <column name="average_cost" type="DECIMAL(10,2)"/>
+            <column name="total_value" type="DECIMAL(15,2)"/>
+            
+            <!-- Date Tracking -->
+            <column name="received_date" type="TIMESTAMP"/>
+            <column name="expiry_date" type="TIMESTAMP"/>
+            <column name="manufacture_date" type="TIMESTAMP"/>
+            <column name="last_stock_update" type="TIMESTAMP"/>
+            <column name="last_movement_date" type="TIMESTAMP"/>
+            
+            <!-- Batch and Serial Tracking -->
+            <column name="batch_number" type="VARCHAR(100)"/>
+            <column name="lot_number" type="VARCHAR(100)"/>
+            <column name="serial_numbers" type="TEXT"/>
+            
+            <!-- Physical Attributes -->
+            <column name="unit_of_measure" type="VARCHAR(20)"/>
+            <column name="weight_per_unit" type="DECIMAL(8,3)"/>
+            <column name="dimensions" type="VARCHAR(100)"/>
+            
+            <!-- Quality and Compliance -->
+            <column name="quality_grade" type="VARCHAR(20)"/>
+            <column name="compliance_status" type="VARCHAR(30)"/>
+            <column name="hazmat_classification" type="VARCHAR(50)"/>
+            
+            <!-- Business Logic Fields -->
+            <column name="is_serialized" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_batch_tracked" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_perishable" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="requires_special_handling" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="is_vendor_managed" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="auto_reorder_enabled" type="BOOLEAN" defaultValue="false">
+                <constraints nullable="false"/>
+            </column>
+            
+            <!-- Priority and Handling -->
+            <column name="priority_level" type="INTEGER" defaultValue="5"/>
+            <column name="handling_instructions" type="TEXT"/>
+            <column name="storage_conditions" type="TEXT"/>
+            
+            <!-- Integration and Tracking -->
+            <column name="barcode" type="VARCHAR(100)"/>
+            <column name="qr_code" type="VARCHAR(200)"/>
+            <column name="rfid_tag" type="VARCHAR(100)"/>
+            
+            <!-- Audit Fields -->
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_by" type="VARCHAR(100)"/>
+            <column name="updated_by" type="VARCHAR(100)"/>
+            <column name="version" type="INTEGER" defaultValue="0">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        
+        <!-- Add constraints -->
+        <addCheckConstraint tableName="inventory_items" 
+                           constraintName="chk_available_quantity_non_negative"
+                           checkCondition="available_quantity >= 0"/>
+        
+        <addCheckConstraint tableName="inventory_items" 
+                           constraintName="chk_reserved_quantity_non_negative"
+                           checkCondition="reserved_quantity >= 0"/>
+                           
+        <addCheckConstraint tableName="inventory_items" 
+                           constraintName="chk_total_quantity_non_negative"
+                           checkCondition="total_quantity >= 0"/>
+                           
+        <addCheckConstraint tableName="inventory_items" 
+                           constraintName="chk_priority_level_range"
+                           checkCondition="priority_level >= 1 AND priority_level <= 10"/>
+    </changeSet>
+
+    <changeSet id="002-create-inventory-item-attributes-table" author="inventory-service">
+        <createTable tableName="inventory_item_attributes">
+            <column name="inventory_item_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attribute_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="attribute_value" type="VARCHAR(500)"/>
+        </createTable>
+        
+        <addPrimaryKey tableName="inventory_item_attributes" 
+                      columnNames="inventory_item_id, attribute_name"/>
+        
+        <addForeignKeyConstraint baseTableName="inventory_item_attributes"
+                               baseColumnNames="inventory_item_id"
+                               referencedTableName="inventory_items"
+                               referencedColumnNames="id"
+                               constraintName="fk_inventory_item_attributes_item"
+                               onDelete="CASCADE"/>
+    </changeSet>
+
+</databaseChangeLog>

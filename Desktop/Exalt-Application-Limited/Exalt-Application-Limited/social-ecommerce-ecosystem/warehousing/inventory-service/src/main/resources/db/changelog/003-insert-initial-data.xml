@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.15.xsd">
+
+    <changeSet id="003-insert-sample-inventory-data" author="inventory-service" context="development">
+        <!-- Sample Warehouse-Managed Inventory Items -->
+        <insert tableName="inventory_items">
+            <column name="sku" value="WH-ELEC-001"/>
+            <column name="product_id" value="1001"/>
+            <column name="vendor_id" value="1"/>
+            <column name="warehouse_id" value="1"/>
+            <column name="location" value="A-01-05"/>
+            <column name="zone" value="ELECTRONICS"/>
+            <column name="available_quantity" value="150"/>
+            <column name="reserved_quantity" value="0"/>
+            <column name="total_quantity" value="150"/>
+            <column name="reorder_point" value="25"/>
+            <column name="maximum_stock_level" value="500"/>
+            <column name="minimum_stock_level" value="10"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="category" value="ELECTRONICS"/>
+            <column name="subcategory" value="SMARTPHONES"/>
+            <column name="unit_cost" value="299.99"/>
+            <column name="average_cost" value="299.99"/>
+            <column name="total_value" value="44998.50"/>
+            <column name="unit_of_measure" value="EACH"/>
+            <column name="weight_per_unit" value="0.180"/>
+            <column name="dimensions" value="15.6x7.3x0.8"/>
+            <column name="is_vendor_managed" value="false"/>
+            <column name="auto_reorder_enabled" value="true"/>
+            <column name="priority_level" value="3"/>
+            <column name="barcode" value="1234567890123"/>
+        </insert>
+
+        <!-- Sample Vendor Self-Storage Inventory Item -->
+        <insert tableName="inventory_items">
+            <column name="sku" value="VS-FASH-001"/>
+            <column name="product_id" value="2001"/>
+            <column name="vendor_id" value="2"/>
+            <column name="warehouse_id" value="null"/>
+            <column name="location" value="VENDOR_FACILITY_NYC_A1"/>
+            <column name="zone" value="FASHION_APPAREL"/>
+            <column name="available_quantity" value="75"/>
+            <column name="reserved_quantity" value="5"/>
+            <column name="total_quantity" value="80"/>
+            <column name="reorder_point" value="15"/>
+            <column name="maximum_stock_level" value="200"/>
+            <column name="minimum_stock_level" value="10"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="category" value="FASHION"/>
+            <column name="subcategory" value="WOMENS_APPAREL"/>
+            <column name="unit_cost" value="45.00"/>
+            <column name="average_cost" value="45.00"/>
+            <column name="total_value" value="3600.00"/>
+            <column name="unit_of_measure" value="EACH"/>
+            <column name="weight_per_unit" value="0.300"/>
+            <column name="dimensions" value="30x25x5"/>
+            <column name="is_vendor_managed" value="true"/>
+            <column name="auto_reorder_enabled" value="true"/>
+            <column name="priority_level" value="5"/>
+            <column name="barcode" value="2345678901234"/>
+        </insert>
+
+        <!-- Sample Low Stock Item -->
+        <insert tableName="inventory_items">
+            <column name="sku" value="WH-HOME-001"/>
+            <column name="product_id" value="3001"/>
+            <column name="vendor_id" value="3"/>
+            <column name="warehouse_id" value="1"/>
+            <column name="location" value="B-03-12"/>
+            <column name="zone" value="HOME_GARDEN"/>
+            <column name="available_quantity" value="8"/>
+            <column name="reserved_quantity" value="2"/>
+            <column name="total_quantity" value="10"/>
+            <column name="reorder_point" value="20"/>
+            <column name="maximum_stock_level" value="100"/>
+            <column name="minimum_stock_level" value="5"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="category" value="HOME"/>
+            <column name="subcategory" value="KITCHEN"/>
+            <column name="unit_cost" value="24.99"/>
+            <column name="average_cost" value="24.99"/>
+            <column name="total_value" value="249.90"/>
+            <column name="unit_of_measure" value="EACH"/>
+            <column name="weight_per_unit" value="1.200"/>
+            <column name="dimensions" value="25x15x10"/>
+            <column name="is_vendor_managed" value="false"/>
+            <column name="auto_reorder_enabled" value="true"/>
+            <column name="priority_level" value="7"/>
+            <column name="barcode" value="3456789012345"/>
+        </insert>
+
+        <!-- Sample Perishable Item with Expiry -->
+        <insert tableName="inventory_items">
+            <column name="sku" value="VS-FOOD-001"/>
+            <column name="product_id" value="4001"/>
+            <column name="vendor_id" value="4"/>
+            <column name="warehouse_id" value="null"/>
+            <column name="location" value="VENDOR_COLD_STORAGE_LA"/>
+            <column name="zone" value="PERISHABLE"/>
+            <column name="available_quantity" value="50"/>
+            <column name="reserved_quantity" value="10"/>
+            <column name="total_quantity" value="60"/>
+            <column name="reorder_point" value="30"/>
+            <column name="maximum_stock_level" value="150"/>
+            <column name="minimum_stock_level" value="20"/>
+            <column name="status" value="AVAILABLE"/>
+            <column name="category" value="FOOD"/>
+            <column name="subcategory" value="ORGANIC_PRODUCE"/>
+            <column name="expiry_date" value="2025-06-30"/>
+            <column name="unit_cost" value="8.50"/>
+            <column name="average_cost" value="8.50"/>
+            <column name="total_value" value="510.00"/>
+            <column name="unit_of_measure" value="LBS"/>
+            <column name="weight_per_unit" value="1.000"/>
+            <column name="is_perishable" value="true"/>
+            <column name="requires_special_handling" value="true"/>
+            <column name="is_vendor_managed" value="true"/>
+            <column name="auto_reorder_enabled" value="true"/>
+            <column name="priority_level" value="2"/>
+            <column name="storage_conditions" value="Keep refrigerated at 35-40°F"/>
+            <column name="barcode" value="4567890123456"/>
+        </insert>
+
+        <!-- Sample Quality Check Item -->
+        <insert tableName="inventory_items">
+            <column name="sku" value="WH-MED-001"/>
+            <column name="product_id" value="5001"/>
+            <column name="vendor_id" value="5"/>
+            <column name="warehouse_id" value="2"/>
+            <column name="location" value="C-01-08"/>
+            <column name="zone" value="MEDICAL"/>
+            <column name="available_quantity" value="25"/>
+            <column name="reserved_quantity" value="0"/>
+            <column name="total_quantity" value="25"/>
+            <column name="reorder_point" value="10"/>
+            <column name="maximum_stock_level" value="50"/>
+            <column name="minimum_stock_level" value="5"/>
+            <column name="status" value="QUALITY_CHECK"/>
+            <column name="category" value="MEDICAL"/>
+            <column name="subcategory" value="DIAGNOSTIC"/>
+            <column name="unit_cost" value="125.00"/>
+            <column name="average_cost" value="125.00"/>
+            <column name="total_value" value="3125.00"/>
+            <column name="unit_of_measure" value="EACH"/>
+            <column name="weight_per_unit" value="0.050"/>
+            <column name="dimensions" value="10x5x2"/>
+            <column name="compliance_status" value="FDA_PENDING"/>
+            <column name="requires_special_handling" value="true"/>
+            <column name="is_vendor_managed" value="false"/>
+            <column name="auto_reorder_enabled" value="false"/>
+            <column name="priority_level" value="1"/>
+            <column name="handling_instructions" value="Handle with sterile gloves only"/>
+            <column name="barcode" value="5678901234567"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
